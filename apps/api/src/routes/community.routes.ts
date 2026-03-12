@@ -1,0 +1,23 @@
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.middleware';
+import { 
+    getNotes, createNote, deleteNote, 
+    getQuestions, createQuestion, createAnswer, upvoteAnswer,
+    checkCertificate 
+} from '../controllers/community.controller';
+
+const router = Router();
+router.use(requireAuth);
+
+router.get('/lectures/:lectureId/notes', getNotes);
+router.post('/lectures/:lectureId/notes', createNote);
+router.delete('/notes/:noteId', deleteNote);
+
+router.get('/lectures/:lectureId/questions', getQuestions);
+router.post('/lectures/:lectureId/questions', createQuestion);
+router.post('/questions/:questionId/answers', createAnswer);
+router.post('/answers/:answerId/upvote', upvoteAnswer);
+
+router.get('/courses/:courseId/certificate', checkCertificate);
+
+export default router;

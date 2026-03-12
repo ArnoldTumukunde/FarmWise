@@ -1,0 +1,473 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── AUTH & USERS ──────────────────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  email          String?   @unique
+  phone          String?   @unique
+  passwordHash   String?
+  role           Role      @default(FARMER)
+  isVerified     Boolean   @default(false)
+  verifyToken    String?
+  verifyTokenExp DateTime?
+  resetToken     String?
+  resetTokenExp  DateTime?
+  profile        Profile?
+  enrollments    Enrollment[]
+  courses        Course[]
+  reviews        Review[]
+  downloads      OfflineDownload[]
+  notifications  Notification[]
+  cart           Cart?
+  questions      Question[]
+  answers        Answer[]
+  notes          Note[]
+  progress       LectureProgress[]
+  instructorApplications InstructorApplication[]
+  reviewedApplications   InstructorApplication[] @relation("ApplicationReviewer")
+  answerUpvotes  AnswerUpvote[]
+  reviewUpvotes  ReviewUpvote[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+}
+
+enum Role {
+  FARMER
+  INSTRUCTOR
+  ADMIN
+}
+
+model Profile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id])
+  displayName           String
+  headline              String?
+  bio                   String?
+  avatarPublicId        String?
+  farmLocation          String?
+  cropSpecialities      String[]
+  website               String?
+  stripeConnectAccountId String? // Set when instructor completes Stripe Connect Express onboarding
+  stripeConnectStatus   String? // 'pending' | 'active' — from Stripe account.capabilities
+}
+
+// ─── COURSES ───────────────────────────────────────────────────────────────
+
+model Course {
+  id                   String       @id @default(cuid())
+  slug                 String       @unique
+  // SLUG GENERATION RULE: slug = slugify(title) + '-' + cuid().slice(-6)
+  // Always append a random 6-char CUID suffix. On P2002 (unique violation), regenerate
+  // the suffix and retry once — collision probability is negligible but handle it cleanly.
+  // Example: "growing-maize-in-uganda-k7x2p1"
+  title                String
+  subtitle             String?
+  description          String       @db.Text
+  thumbnailPublicId    String?
+  previewVideoPublicId String?
+  price                Decimal      @default(0) @db.Decimal(10, 2) // Always store in major units (UGX, not fils/cents)
+  level                Level        @default(BEGINNER)
+  language             String       @default("English")
+  status               CourseStatus @default(DRAFT)
+  isOfflineEnabled     Boolean      @default(true)
+  isFeatured           Boolean      @default(false) // Set by admin; drives [FEATURED] badge in course card
+  // Denormalized counters — update atomically in the service layer on each relevant event:
+  averageRating        Decimal      @default(0) @db.Decimal(3, 2)
+  reviewCount          Int          @default(0)
+  enrollmentCount      Int          @default(0)
+  totalDuration        Int          @default(0) // Sum of all lecture durations in seconds
+  instructorId         String
+  instructor           User         @relation(fields: [instructorId], references: [id])
+  categoryId           String
+  category             Category     @relation(fields: [categoryId], references: [id])
+  tags                 TagsOnCourses[]
+  sections             Section[]
+  enrollments          Enrollment[]
+  reviews              Review[]
+  cartItems            CartItem[]
+  coupons              Coupon[]
+  outcomes             String[]
+  requirements         String[]
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  publishedAt          DateTime?
+
+  @@index([status, categoryId])
+  @@index([instructorId])
+  @@index([averageRating])    // For "Highest Rated" sort
+  @@index([enrollmentCount])  // For "Most Popular" sort
+  @@index([isFeatured])       // Admin-curated featured section
+}
+
+enum Level {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum CourseStatus {
+  DRAFT
+  UNDER_REVIEW
+  PUBLISHED
+  UNPUBLISHED
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  description String?
+  iconName    String?
+  parentId    String?
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryTree")
+  courses     Course[]
+}
+
+model Tag {
+  id      String         @id @default(cuid())
+  name    String         @unique
+  courses TagsOnCourses[]
+}
+
+model TagsOnCourses {
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tagId    String
+  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, tagId])
+  @@index([tagId]) // Query "all courses with tag X" without full scan
+}
+
+model Section {
+  id       String    @id @default(cuid())
+  courseId String
+  course   Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title    String
+  order    Int
+  lectures Lecture[]
+
+  @@index([courseId])
+}
+
+model Lecture {
+  id               String      @id @default(cuid())
+  sectionId        String
+  section          Section     @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  title            String
+  order            Int
+  type             LectureType
+  videoPublicId    String?
+  videoStatus      VideoStatus @default(PENDING)
+  hlsUrl           String?
+  duration         Int?
+  fileSizeBytes    BigInt?
+  isPreview        Boolean     @default(false)
+  resources        Resource[]
+  progress         LectureProgress[]
+  downloads        OfflineDownload[]
+  notes            Note[]
+
+  @@index([sectionId])
+}
+
+enum LectureType {
+  VIDEO
+  ARTICLE
+  QUIZ
+}
+
+enum VideoStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+model Resource {
+  id        String  @id @default(cuid())
+  lectureId String
+  lecture   Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  name      String
+  publicId  String
+  fileType  String
+  sizeBytes BigInt?
+
+  @@index([lectureId])
+}
+
+// ─── INSTRUCTOR APPLICATIONS ───────────────────────────────────────────────
+
+model InstructorApplication {
+  id          String            @id @default(cuid())
+  userId      String
+  // NOT @unique — a user may reapply after rejection. Only one PENDING per user
+  // is enforced at the service layer: reject new submission if status=PENDING exists.
+  user        User              @relation(fields: [userId], references: [id])
+  status      ApplicationStatus @default(PENDING)
+  motivation  String            @db.Text
+  expertise   String[]
+  reviewedBy  String?           // Admin userId — scalar FK only (no back-relation needed)
+  reviewer    User?             @relation("ApplicationReviewer", fields: [reviewedBy], references: [id])
+  reviewNote  String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ─── CART ──────────────────────────────────────────────────────────────────
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id])
+  items     CartItem[]
+  couponId  String?
+  coupon    Coupon?    @relation(fields: [couponId], references: [id])
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id       String @id @default(cuid())
+  cartId   String
+  cart     Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id])
+
+  @@unique([cartId, courseId])
+}
+
+// ─── ENROLLMENT & PAYMENTS ─────────────────────────────────────────────────
+
+model Enrollment {
+  id               String           @id @default(cuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id])
+  courseId         String
+  course           Course           @relation(fields: [courseId], references: [id])
+  paidAmount       Decimal          @default(0)
+  stripeSessionId  String?          // Stripe Checkout Session ID (paid courses only)
+  paymentIntentId  String?          // Stripe PaymentIntent ID (from checkout.session.completed)
+  status           EnrollmentStatus @default(PENDING)
+  // PENDING: created when Checkout Session is started — farmer can't access course yet
+  // ACTIVE:  set by webhook after payment confirmed, or immediately for free courses
+  // REFUNDED: set after refund processed
+  refundedAt       DateTime?
+  createdAt        DateTime         @default(now())
+  progress         LectureProgress[]
+  downloads        OfflineDownload[]
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@index([stripeSessionId])   // Webhook: O(1) lookup by session ID
+  @@index([paymentIntentId])   // Webhook: O(1) lookup for late-clearing payment methods
+}
+
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  REFUNDED
+}
+
+model ProcessedStripeEvent {
+  id          String   @id
+  processedAt DateTime @default(now())
+}
+
+model Coupon {
+  id        String     @id @default(cuid())
+  code      String     @unique
+  type      CouponType
+  value     Decimal
+  maxUses   Int?
+  usedCount Int        @default(0)
+  expiresAt DateTime?
+  courseId  String?
+  course    Course?    @relation(fields: [courseId], references: [id])
+  carts     Cart[]
+  createdAt DateTime   @default(now())
+
+  @@index([courseId])
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
+
+// ─── LEARNING & PROGRESS ───────────────────────────────────────────────────
+
+model LectureProgress {
+  id             String     @id @default(cuid())
+  userId         String
+  user           User       @relation(fields: [userId], references: [id])
+  lectureId      String
+  lecture        Lecture    @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  enrollmentId   String
+  enrollment     Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  isCompleted    Boolean    @default(false)
+  watchedSeconds Int        @default(0)
+  lastWatchedAt  DateTime?
+  completedAt    DateTime?
+  syncedAt       DateTime?
+
+  @@unique([userId, lectureId])
+  @@index([enrollmentId]) // Load all progress for a course in one query
+  @@index([userId])
+}
+
+model OfflineDownload {
+  id           String         @id @default(cuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id])
+  lectureId    String
+  lecture      Lecture        @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  enrollmentId String
+  enrollment   Enrollment     @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  status       DownloadStatus @default(DOWNLOADED)
+  downloadedAt DateTime       @default(now())
+  deletedAt    DateTime?
+
+  @@unique([userId, lectureId])
+}
+
+enum DownloadStatus {
+  DOWNLOADED
+  DELETED
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  lectureId String
+  lecture   Lecture  @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  timestamp Int?
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lectureId])
+  @@index([userId])
+}
+
+model Question {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  lectureId String
+  content   String
+  answers   Answer[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lectureId])
+  @@index([userId])
+}
+
+model Answer {
+  id         String        @id @default(cuid())
+  questionId String
+  question   Question      @relation(fields: [questionId], references: [id])
+  userId     String
+  user       User          @relation(fields: [userId], references: [id])
+  content    String
+  upvotes    Int           @default(0) // Denormalized count; increment via AnswerUpvote insert
+  upvoters   AnswerUpvote[]
+  createdAt  DateTime      @default(now())
+}
+
+model AnswerUpvote {
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+  answerId String
+  answer   Answer @relation(fields: [answerId], references: [id])
+
+  @@id([userId, answerId])
+  @@index([answerId]) // Count upvoters per answer efficiently
+}
+
+// ─── REVIEWS ───────────────────────────────────────────────────────────────
+
+model Review {
+  id                 String        @id @default(cuid())
+  userId             String
+  user               User          @relation(fields: [userId], references: [id])
+  courseId           String
+  course             Course        @relation(fields: [courseId], references: [id])
+  rating             Int           // 1–5; validate in service layer
+  content            String?
+  instructorResponse String?
+  respondedAt        DateTime?
+  upvotes            Int           @default(0) // Denormalized; increment via ReviewUpvote insert
+  upvoters           ReviewUpvote[]
+  isHidden           Boolean       @default(false)
+  editableUntil      DateTime?     // Set to createdAt + 60 days in service layer on creation
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+}
+
+model ReviewUpvote {
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+  reviewId String
+  review   Review @relation(fields: [reviewId], references: [id])
+
+  @@id([userId, reviewId])
+  @@index([reviewId])
+}
+
+// ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  type      NotificationType
+  title     String
+  body      String
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([userId, isRead]) // For efficient unread count queries
+}
+
+enum NotificationType {
+  ENROLLMENT_CONFIRMED
+  REVIEW_RECEIVED
+  REVIEW_RESPONSE
+  REFUND_APPROVED
+  COURSE_APPROVED
+  COURSE_REJECTED
+  PAYOUT_PROCESSED
+  QA_ANSWER
+  CERTIFICATE_EARNED
+  ANNOUNCEMENT
+  INSTRUCTOR_APPLICATION_REVIEWED // Sent to applicant when admin approves or rejects
+}
