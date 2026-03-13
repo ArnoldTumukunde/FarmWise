@@ -1,7 +1,13 @@
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 export class AuthController {
+    static async me(req: AuthRequest, res: Response) {
+        if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+        res.json({ user: { id: req.user.id, role: req.user.role } });
+    }
+
     static async register(req: Request, res: Response) {
         try {
             const { email, phone, password } = req.body;

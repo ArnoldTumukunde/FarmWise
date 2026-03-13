@@ -10,12 +10,13 @@ export interface StorageService {
   getSignedVideoUrl(publicId: string, expiresInSeconds: number): string;
   getHlsUrl(publicId: string): string;
   deleteAsset(publicId: string): Promise<void>;
-  generateUploadSignature(folder: string): { 
-    signature: string; 
-    timestamp: number; 
-    folder: string; 
-    eager?: string; 
-    eager_async?: boolean; 
-    api_key: string | undefined; 
+  generateUploadSignature(folder: string, resourceType?: 'image' | 'video'): {
+    signature: string;
+    timestamp: number;
+    folder: string;
+    eager?: string;
+    eager_async?: boolean;
+    api_key: string | undefined;
+    resourceType?: string;
   };
 }

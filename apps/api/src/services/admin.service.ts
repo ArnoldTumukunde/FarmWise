@@ -25,12 +25,36 @@ export class AdminService {
              take: 5
         });
 
+        const recentUsers = await prisma.user.findMany({
+            include: { profile: true },
+            orderBy: { createdAt: 'desc' },
+            take: 5
+        });
+
+        const recentCourses = await prisma.course.findMany({
+            include: { instructor: { select: { profile: true } } },
+            orderBy: { createdAt: 'desc' },
+            take: 5
+        });
+
+        const pendingCoursesCount = await prisma.course.count({
+            where: { status: 'UNDER_REVIEW' }
+        });
+
+        const flaggedReviewsCount = await prisma.review.count({
+            where: { rating: 1, isHidden: false }
+        });
+
         return {
             totalUsers,
             activeCourses,
             totalRevenue,
             totalDownloads,
-            pendingApplications
+            pendingApplications,
+            recentUsers,
+            recentCourses,
+            pendingCoursesCount,
+            flaggedReviewsCount
         };
     }
 
@@ -75,7 +99,84 @@ export class AdminService {
         });
     }
 
+    static async updateUserRole(userId: string, role: 'FARMER' | 'INSTRUCTOR' | 'ADMIN') {
+        return prisma.user.update({
+            where: { id: userId },
+            data: { role }
+        });
+    }
+
+    static async suspendUser(userId: string, suspended: boolean) {
+        return prisma.user.update({
+            where: { id: userId },
+            data: { isVerified: !suspended }
+        });
+    }
+
+    static async deleteUser(userId: string) {
+        // Check if user is an instructor with active enrollments
+        const activeEnrollments = await prisma.enrollment.count({
+            where: {
+                course: { instructorId: userId },
+                status: 'ACTIVE'
+            }
+        });
+
+        if (activeEnrollments > 0) {
+            throw new Error('Cannot delete user: they have active enrollments as an instructor');
+        }
+
+        return prisma.user.delete({ where: { id: userId } });
+    }
+
     // --- COURSES ---
+    static async listAllCourses(query: { status?: string; search?: string; page?: number }) {
+        const page = query.page || 1;
+        const limit = 20;
+        const skip = (page - 1) * limit;
+
+        const where: any = {};
+        if (query.status) where.status = query.status;
+        if (query.search) {
+            where.OR = [
+                { title: { contains: query.search, mode: 'insensitive' } },
+                { description: { contains: query.search, mode: 'insensitive' } }
+            ];
+        }
+
+        const [courses, total] = await Promise.all([
+            prisma.course.findMany({
+                where,
+                skip,
+                take: limit,
+                include: { instructor: { select: { profile: true } } },
+                orderBy: { createdAt: 'desc' }
+            }),
+            prisma.course.count({ where })
+        ]);
+
+        return { courses, total, page, totalPages: Math.ceil(total / limit) };
+    }
+
+    static async deleteCourse(courseId: string) {
+        return prisma.$transaction(async (tx) => {
+            await tx.enrollment.deleteMany({ where: { courseId } });
+            const sections = await tx.section.findMany({ where: { courseId }, select: { id: true } });
+            const sectionIds = sections.map((s) => s.id);
+            await tx.lecture.deleteMany({ where: { sectionId: { in: sectionIds } } });
+            await tx.section.deleteMany({ where: { courseId } });
+            await tx.review.deleteMany({ where: { courseId } });
+            return tx.course.delete({ where: { id: courseId } });
+        });
+    }
+
+    static async unpublishCourse(courseId: string) {
+        return prisma.course.update({
+            where: { id: courseId },
+            data: { status: 'DRAFT' }
+        });
+    }
+
     static async listCoursesForReview() {
         return prisma.course.findMany({
             where: { status: 'UNDER_REVIEW' },
@@ -121,5 +222,9 @@ export class AdminService {
              where: { id: reviewId },
              data: { isHidden }
         });
+    }
+
+    static async deleteReview(reviewId: string) {
+        return prisma.review.delete({ where: { id: reviewId } });
     }
 }

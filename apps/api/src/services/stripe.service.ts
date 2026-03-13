@@ -9,6 +9,18 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock'
   apiVersion: '2023-10-16' as any,
 });
 
+/**
+ * Zero-decimal currencies should NOT be multiplied by 100.
+ * UGX, KES, TZS, etc. are zero-decimal in Stripe.
+ */
+const ZERO_DECIMAL_CURRENCIES = new Set(['ugx', 'kes', 'tzs', 'ghs', 'jpy', 'krw']);
+
+export function toStripeAmount(amount: number, currency: string): number {
+  return ZERO_DECIMAL_CURRENCIES.has(currency.toLowerCase())
+    ? Math.round(amount)
+    : Math.round(amount * 100);
+}
+
 export class StripeService {
   /**
    * Creates a Stripe Checkout session for course purchases.
@@ -19,18 +31,31 @@ export class StripeService {
       throw new Error("Free courses should not use Stripe Checkout");
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const currency = 'ugx';
+    const unitAmount = toStripeAmount(Number(course.price), currency);
+
+    // Check if instructor has Stripe Connect set up for revenue split
+    const instructorProfile = await prisma.profile.findUnique({
+      where: { userId: course.instructorId },
+      select: { stripeConnectAccountId: true, stripeConnectStatus: true },
+    });
+
+    const hasConnect =
+      instructorProfile?.stripeConnectAccountId &&
+      instructorProfile?.stripeConnectStatus === 'active';
+
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: ['card'],
       line_items: [
         {
           price_data: {
-            currency: 'usd', // Default to USD for now
+            currency,
             product_data: {
               name: course.title,
               description: `Access to ${course.title} on FarmWise`,
               images: course.thumbnailPublicId ? [`https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/${course.thumbnailPublicId}`] : [],
             },
-            unit_amount: Math.round(Number(course.price) * 100), // Stripe expects cents
+            unit_amount: unitAmount,
           },
           quantity: 1,
         },
@@ -43,9 +68,25 @@ export class StripeService {
         userId,
         courseId: course.id,
       },
-    });
+    };
 
-    return session.url;
+    // Apply 30% platform fee and route remainder to instructor via Connect
+    if (hasConnect) {
+      const applicationFee = toStripeAmount(
+        Math.round(Number(course.price) * 0.3),
+        currency,
+      );
+      sessionParams.payment_intent_data = {
+        application_fee_amount: applicationFee,
+        transfer_data: {
+          destination: instructorProfile.stripeConnectAccountId!,
+        },
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
+
+    return session;
   }
 
   /**

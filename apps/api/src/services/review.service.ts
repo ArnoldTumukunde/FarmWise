@@ -1,4 +1,5 @@
 import { prisma } from '@farmwise/db';
+import { NotificationService } from './notification.service';
 
 export class ReviewService {
     static async getCourseReviews(courseId: string) {
@@ -32,6 +33,30 @@ export class ReviewService {
         });
 
         await this.updateCourseRating(courseId);
+
+        // Notify the instructor about the new review
+        try {
+            const course = await prisma.course.findUnique({
+                where: { id: courseId },
+                select: { title: true, instructorId: true },
+            });
+            if (course) {
+                const instructor = await prisma.user.findUnique({
+                    where: { id: course.instructorId },
+                    select: { phone: true, email: true },
+                });
+                await NotificationService.notifyReviewReceived(
+                    course.instructorId,
+                    course.title,
+                    rating,
+                    instructor?.phone,
+                    instructor?.email,
+                );
+            }
+        } catch (notifyErr) {
+            console.error('Failed to send review notification:', notifyErr);
+        }
+
         return review;
     }
 

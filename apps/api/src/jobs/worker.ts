@@ -1,15 +1,8 @@
 import { Worker, Job } from 'bullmq';
-import { redisClient } from '../index';
+import { bullmqConnection } from '../lib/redis';
 import { prisma } from '@farmwise/db';
 import { NotificationType } from '@prisma/client';
-// Using mock implementations for Phase 5 to avoid failing missing modules
-// In production, these should be real integrations.
-
-export const emailServiceMock = async (to: string, subject: string, html: string) => {
-    console.log(`[MOCK EMAIL] To: ${to} | Subject: ${subject}`);
-    // Simulate latency
-    await new Promise(r => setTimeout(r, 500));
-};
+import { emailService } from '../services/email.service';
 
 export const smsServiceMock = async (to: string, message: string) => {
     console.log(`[MOCK SMS] To: ${to} | Message length: ${message.length} | Body: ${message}`);
@@ -42,7 +35,7 @@ export const notificationWorker = new Worker<NotificationJobData>(
 
         // 2. Send Email if available
         if (emailOptions) {
-            await emailServiceMock(emailOptions.to, emailOptions.subject, emailOptions.html);
+            await emailService.sendGeneric(emailOptions.to, emailOptions.subject, emailOptions.html);
         }
 
         // 3. Send SMS if available
@@ -52,7 +45,7 @@ export const notificationWorker = new Worker<NotificationJobData>(
         
         return { success: true };
     },
-    { connection: redisClient }
+    { connection: bullmqConnection }
 );
 
 notificationWorker.on('completed', job => {

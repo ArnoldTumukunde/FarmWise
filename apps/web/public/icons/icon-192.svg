@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="32" fill="#2E7D32"/>
+  <text x="96" y="110" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="48" fill="white">FW</text>
+  <path d="M96 40 C96 40 80 60 80 75 C80 85 87 92 96 92 C105 92 112 85 112 75 C112 60 96 40 96 40Z" fill="#4CAF50" opacity="0.9"/>
+</svg>

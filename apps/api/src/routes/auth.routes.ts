@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller';
 import { authLimiter, otpLimiter } from '../middleware/rate-limit.middleware';
+import { requireAuth } from '../middleware/auth.middleware';
 
 const router = Router();
 
 // /api/v1/auth/*
+router.get('/me', requireAuth, AuthController.me);
 router.post('/register', authLimiter, AuthController.register);
 router.post('/verify', otpLimiter, AuthController.verify);
 router.post('/login', authLimiter, AuthController.login);

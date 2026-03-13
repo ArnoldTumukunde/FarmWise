@@ -12,6 +12,10 @@ import learnRoutes from './routes/learn.routes';
 import communityRoutes from './routes/community.routes';
 import reviewRoutes from './routes/review.routes';
 import adminRoutes from './routes/admin.routes';
+import cartRoutes from './routes/cart.routes';
+import profileRoutes from './routes/profile.routes';
+import statsRoutes from './routes/stats.routes';
+import notificationRoutes from './routes/notification.routes';
 
 const app = express();
 
@@ -27,13 +31,17 @@ app.use(cookieParser());
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/courses', courseRoutes);
 app.use('/api/v1/instructor', instructorRoutes);
-app.use('/api/v1/instructor/media', mediaRoutes);
+app.use('/api/v1/media', mediaRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/enrollments', enrollmentRoutes);
 app.use('/api/v1/learn', learnRoutes);
 app.use('/api/v1/community', communityRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/cart', cartRoutes);
+app.use('/api/v1/profile', profileRoutes);
+app.use('/api/v1/stats', statsRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });

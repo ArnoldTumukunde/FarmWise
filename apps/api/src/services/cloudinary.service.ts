@@ -66,15 +66,19 @@ export class CloudinaryStorageService implements StorageService {
     await cloudinary.uploader.destroy(publicId);
   }
 
-  generateUploadSignature(folder: string) {
+  generateUploadSignature(folder: string, resourceType: 'image' | 'video' = 'image') {
     const timestamp = Math.round(Date.now() / 1000);
-    const paramsToSign = {
+    const paramsToSign: Record<string, any> = {
       timestamp,
       folder: `farmwise/${folder}`,
-      eager: 'sp_hd/m3u8', // HLS transcoding on upload
-      eager_async: true,
     };
-    
+
+    // Only add HLS eager transform for video uploads
+    if (resourceType === 'video') {
+      paramsToSign.eager = 'sp_hd/m3u8';
+      paramsToSign.eager_async = true;
+    }
+
     // Fallback secret parsing for missing CLOUDINARY_API_SECRET if CLOUDINARY_URL format used
     let apiSecret = process.env.CLOUDINARY_API_SECRET;
     let apiKey = process.env.CLOUDINARY_API_KEY;
@@ -96,6 +100,7 @@ export class CloudinaryStorageService implements StorageService {
       eager: paramsToSign.eager,
       eager_async: paramsToSign.eager_async,
       api_key: apiKey,
+      resourceType,
     };
   }
 }

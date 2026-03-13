@@ -1,9 +1,9 @@
 import { Queue } from 'bullmq';
-import { redisClient } from '../index'; // Will refactor to a shared redis file
+import { bullmqConnection } from '../lib/redis';
 
 // Export our singleton Queue instance
 export const notificationQueue = new Queue('notifications', {
-  connection: redisClient,
+  connection: bullmqConnection,
   defaultJobOptions: {
     attempts: 3,
     backoff: { type: 'exponential', delay: 2000 },

@@ -6,16 +6,23 @@ import { v2 as cloudinary } from 'cloudinary';
 
 export const getUploadSignature = async (req: AuthRequest, res: Response) => {
   try {
-    const { folder } = req.body;
+    // Support both GET query params and POST body
+    const folder = (req.query.folder as string) || req.body?.folder;
     if (!folder) return res.status(400).json({ error: 'Folder name is required' });
+
+    const resourceType = ((req.query.type as string) || req.body?.type || 'image') as 'image' | 'video';
 
     // Ensure instructor access
     if (req.user!.role !== 'INSTRUCTOR' && req.user!.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Instructor access required' });
     }
 
-    const signatureData = storageService.generateUploadSignature(folder);
-    res.json(signatureData);
+    const signatureData = storageService.generateUploadSignature(folder, resourceType);
+    res.json({
+      ...signatureData,
+      apiKey: signatureData.api_key,
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

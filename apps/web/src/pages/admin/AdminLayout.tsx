@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, MessageSquare, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, MessageSquare, LogOut, Menu, X } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export function AdminLayout() {
   const location = useLocation();
   const { logout } = useAuthStore();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
@@ -13,52 +15,107 @@ export function AdminLayout() {
     { name: 'Reviews', path: '/admin/reviews', icon: MessageSquare },
   ];
 
-  return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col fixed inset-y-0 left-0 z-10">
-        <div className="h-16 flex items-center px-6 border-b border-slate-800">
-          <Link to="/" className="text-xl font-bold text-white flex items-center gap-2">
-            🌱 FarmWise <span className="text-xs bg-primary px-2 py-0.5 rounded text-white">Admin</span>
-          </Link>
-        </div>
-        
-        <nav className="flex-1 overflow-y-auto py-4">
-          <ul className="space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <li key={item.path}>
-                  <Link 
-                    to={item.path} 
-                    className={`flex items-center gap-3 px-6 py-3 font-medium transition-colors ${
-                      isActive ? 'bg-primary/10 text-primary border-r-4 border-primary' : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
-                  >
-                    <Icon size={20} />
-                    {item.name}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+  const isActive = (path: string) => {
+    if (path === '/admin') return location.pathname === '/admin';
+    return location.pathname.startsWith(path);
+  };
 
-        <div className="p-4 border-t border-slate-800">
-          <button 
-            onClick={() => logout()}
-            className="flex items-center gap-3 px-4 py-2 w-full text-slate-400 hover:text-white transition-colors"
-          >
-            <LogOut size={20} />
-            Sign Out
-          </button>
-        </div>
+  const sidebarContent = (
+    <>
+      {/* Logo */}
+      <div className="h-16 flex items-center px-6 border-b border-[#2E7D32]/10">
+        <Link
+          to="/"
+          className="text-xl font-bold text-[#1B2B1B] flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32] rounded"
+        >
+          <span className="w-8 h-8 bg-[#2E7D32] rounded-lg flex items-center justify-center text-white text-sm font-bold">FW</span>
+          <span>FarmWise</span>
+          <span className="text-[10px] bg-[#2E7D32] px-2 py-0.5 rounded-full text-white font-semibold uppercase tracking-wide">Admin</span>
+        </Link>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto py-4 px-3">
+        <ul className="space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.path);
+            return (
+              <li key={item.path}>
+                <Link
+                  to={item.path}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32] ${
+                    active
+                      ? 'bg-[#2E7D32]/10 text-[#2E7D32] border-l-[3px] border-[#F57F17]'
+                      : 'text-[#5A6E5A] hover:text-[#1B2B1B] hover:bg-[#2E7D32]/5'
+                  }`}
+                >
+                  <Icon size={20} />
+                  {item.name}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      {/* Logout */}
+      <div className="p-4 border-t border-[#2E7D32]/10">
+        <button
+          onClick={() => { logout(); setSidebarOpen(false); }}
+          className="flex items-center gap-3 px-4 py-2.5 w-full text-sm font-medium text-[#5A6E5A] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+        >
+          <LogOut size={20} />
+          Sign Out
+        </button>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#FAFAF5] flex">
+      {/* Mobile hamburger */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 h-14 bg-white border-b border-[#2E7D32]/10 flex items-center px-4">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="p-2 rounded-lg text-[#1B2B1B] hover:bg-[#2E7D32]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32]"
+          aria-label="Open sidebar"
+        >
+          <Menu size={24} />
+        </button>
+        <span className="ml-3 font-bold text-[#1B2B1B]">FarmWise Admin</span>
+      </div>
+
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-[#2E7D32]/10 flex flex-col transition-transform duration-200 ease-in-out
+          lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        {/* Mobile close */}
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className="lg:hidden absolute top-4 right-4 p-1.5 rounded-lg text-[#5A6E5A] hover:bg-[#2E7D32]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32]"
+          aria-label="Close sidebar"
+        >
+          <X size={20} />
+        </button>
+        {sidebarContent}
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-64 p-8">
-        <Outlet />
+      <main className="flex-1 lg:ml-64 pt-14 lg:pt-0">
+        <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

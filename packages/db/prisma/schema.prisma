@@ -174,6 +174,8 @@ model Lecture {
   duration         Int?
   fileSizeBytes    BigInt?
   isPreview        Boolean     @default(false)
+  content          String?     @db.Text     // Article body (Markdown)
+  quizData         Json?                    // Quiz questions array [{question, options[], correctIndex}]
   resources        Resource[]
   progress         LectureProgress[]
   downloads        OfflineDownload[]

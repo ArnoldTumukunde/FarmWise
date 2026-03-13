@@ -8,10 +8,12 @@ export class CourseService {
         search?: string;
         categoryId?: string;
         level?: string;
+        featured?: string;
+        filter?: string;
         limit?: number;
         offset?: number;
     }) {
-        const { search, categoryId, level, limit = 20, offset = 0 } = query;
+        const { search, categoryId, level, featured, filter, limit = 20, offset = 0 } = query;
 
         const where: Prisma.CourseWhereInput = {
             status: 'PUBLISHED',
@@ -23,6 +25,14 @@ export class CourseService {
 
         if (level) {
             where.level = level as any;
+        }
+
+        if (featured) {
+            where.isFeatured = true;
+        }
+
+        if (filter === 'free') {
+            where.price = 0;
         }
 
         if (search) {
@@ -79,6 +89,9 @@ export class CourseService {
                             orderBy: { order: 'asc' }
                         }
                     }
+                },
+                tags: {
+                    include: { tag: { select: { name: true } } }
                 },
                 _count: {
                     select: { reviews: true, enrollments: true }

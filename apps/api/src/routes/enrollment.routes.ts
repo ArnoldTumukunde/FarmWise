@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
-import { getMyEnrollments, getEnrolledContent } from '../controllers/enrollment.controller';
+import { getMyEnrollments, getEnrolledContent, requestRefund } from '../controllers/enrollment.controller';
 
 const router = Router();
 
@@ -8,5 +8,6 @@ const router = Router();
 router.use(requireAuth);
 router.get('/', getMyEnrollments);
 router.get('/:courseId/content', getEnrolledContent);
+router.post('/:courseId/refund', requestRefund);
 
 export default router;

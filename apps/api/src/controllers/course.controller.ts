@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { CourseService } from '../services/course.service';
+import { prisma } from '@farmwise/db';
+import { storageService } from '../services/cloudinary.service';
 
 export const listCourses = async (req: Request, res: Response) => {
     try {
@@ -27,6 +29,36 @@ export const listCategories = async (req: Request, res: Response) => {
     try {
         const categories = await CourseService.getCategories();
         res.json({ categories });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * Public endpoint: get a signed video URL for a preview lecture.
+ * No authentication required — only works for lectures marked as isPreview.
+ */
+export const getPreviewUrl = async (req: Request, res: Response) => {
+    try {
+        const { lectureId } = req.params;
+        const lecture = await prisma.lecture.findUnique({
+            where: { id: lectureId },
+        });
+
+        if (!lecture) {
+            return res.status(404).json({ error: 'Lecture not found' });
+        }
+
+        if (!lecture.isPreview) {
+            return res.status(403).json({ error: 'This lecture is not available for preview' });
+        }
+
+        if (!lecture.videoPublicId) {
+            return res.status(404).json({ error: 'No video available for this lecture' });
+        }
+
+        const url = storageService.getSignedVideoUrl(lecture.videoPublicId, 300);
+        res.json({ url });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }

@@ -1,8 +1,10 @@
+import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma, Role } from '@farmwise/db';
 // @ts-ignore
 import AfricasTalking from 'africastalking';
+import { emailService } from './email.service';
 
 const AT = AfricasTalking({
     apiKey: process.env.AT_API_KEY as string,
@@ -50,15 +52,15 @@ export class AuthService {
     }
 
     static async registerEmail(email: string, passwordHash: string) {
-        const token = Math.random().toString(36).substring(2, 15);
+        const token = crypto.randomBytes(32).toString('hex');
         const tokenExp = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
         const user = await prisma.user.create({
             data: { email, passwordHash, role: 'FARMER', verifyToken: token, verifyTokenExp: tokenExp }
         });
 
-        // TODO: Send email using Resend (to be implemented in Module 8)
-        console.log(`[Email Mock] Sent to ${email}: Verify token is ${token}`);
+        // Send verification email via Resend
+        await emailService.sendVerificationEmail(email, token);
 
         return { success: true, message: "Verification email sent", userId: user.id };
     }
@@ -106,7 +108,7 @@ export class AuthService {
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) return { success: true }; // Prevent email scanning
 
-        const token = Math.random().toString(36).substring(2, 15);
+        const token = crypto.randomBytes(32).toString('hex');
         const tokenExp = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
         await prisma.user.update({
@@ -114,8 +116,8 @@ export class AuthService {
             data: { resetToken: token, resetTokenExp: tokenExp }
         });
 
-        // TODO: Send email using Resend
-        console.log(`[Email Mock] Sent to ${email}: Reset token is ${token}`);
+        // Send password reset email via Resend
+        await emailService.sendPasswordResetEmail(email, token);
         return { success: true };
     }
 

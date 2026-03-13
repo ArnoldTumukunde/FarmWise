@@ -1,14 +1,48 @@
 import { prisma } from '@farmwise/db';
 import Stripe from 'stripe';
+import { stripe } from './stripe.service';
+import { NotificationService } from './notification.service';
 
 export class EnrollmentService {
   /**
+   * Creates a PENDING enrollment before Stripe checkout.
+   * Returns null if enrollment already exists and is ACTIVE.
+   */
+  static async createPendingEnrollment(userId: string, courseId: string) {
+    const existing = await prisma.enrollment.findUnique({
+      where: { userId_courseId: { userId, courseId } },
+    });
+
+    if (existing?.status === 'ACTIVE') {
+      return { alreadyActive: true, enrollment: existing };
+    }
+
+    const enrollment = await prisma.enrollment.upsert({
+      where: { userId_courseId: { userId, courseId } },
+      update: { status: 'PENDING' },
+      create: { userId, courseId, status: 'PENDING', paidAmount: 0 },
+    });
+
+    return { alreadyActive: false, enrollment };
+  }
+
+  /**
+   * Stores the Stripe session ID on the enrollment after session creation.
+   */
+  static async setStripeSessionId(userId: string, courseId: string, stripeSessionId: string) {
+    await prisma.enrollment.update({
+      where: { userId_courseId: { userId, courseId } },
+      data: { stripeSessionId },
+    });
+  }
+
+  /**
    * Activates an enrollment after a successful Stripe checkout session.
+   * Looks up by stripeSessionId and validates payment_status.
    */
   static async activateEnrollment(session: Stripe.Checkout.Session) {
     const userId = session.metadata?.userId;
     const courseId = session.metadata?.courseId;
-    const paidAmount = session.amount_total ? session.amount_total / 100 : 0;
     const paymentId = session.payment_intent as string;
 
     if (!userId || !courseId) {
@@ -16,25 +50,70 @@ export class EnrollmentService {
       return;
     }
 
-    await prisma.enrollment.upsert({
-      where: {
-        userId_courseId: { userId, courseId }
-      },
-      update: {
-        status: 'ACTIVE',
-        paidAmount,
-        paymentId
-      },
-      create: {
-        userId,
-        courseId,
-        paidAmount,
-        paymentId,
-        status: 'ACTIVE'
-      }
+    if (session.payment_status !== 'paid') {
+      console.warn(`Session ${session.id} payment_status is ${session.payment_status}, skipping activation`);
+      return;
+    }
+
+    // Convert amount - for zero-decimal currencies the amount IS the amount
+    const paidAmount = session.amount_total ?? 0;
+
+    // Look up by stripeSessionId first, fall back to userId+courseId
+    let enrollment = await prisma.enrollment.findFirst({
+      where: { stripeSessionId: session.id },
     });
 
-    // TODO: BullMQ queues for Email & SMS confirm
+    if (!enrollment) {
+      enrollment = await prisma.enrollment.findUnique({
+        where: { userId_courseId: { userId, courseId } },
+      });
+    }
+
+    if (!enrollment) {
+      console.error(`No enrollment found for session ${session.id}, userId=${userId}, courseId=${courseId}`);
+      return;
+    }
+
+    await prisma.enrollment.update({
+      where: { id: enrollment.id },
+      data: {
+        status: 'ACTIVE',
+        paidAmount,
+        paymentIntentId: paymentId,
+      },
+    });
+
+    // Send enrollment confirmation notification
+    try {
+      const course = await prisma.course.findUnique({ where: { id: courseId }, select: { title: true } });
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { phone: true, email: true } });
+      if (course) {
+        await NotificationService.notifyEnrollmentConfirmed(userId, course.title, user?.phone, user?.email);
+      }
+    } catch (notifyErr) {
+      console.error('Failed to send enrollment notification:', notifyErr);
+    }
+  }
+
+  /**
+   * Activates an enrollment by paymentIntentId (for payment_intent.succeeded webhook).
+   */
+  static async activateByPaymentIntent(paymentIntentId: string) {
+    const enrollment = await prisma.enrollment.findFirst({
+      where: { paymentIntentId },
+    });
+
+    if (!enrollment) {
+      console.warn(`No enrollment found for paymentIntentId=${paymentIntentId}`);
+      return;
+    }
+
+    if (enrollment.status === 'PENDING') {
+      await prisma.enrollment.update({
+        where: { id: enrollment.id },
+        data: { status: 'ACTIVE' },
+      });
+    }
   }
 
   /**
@@ -71,17 +150,55 @@ export class EnrollmentService {
   }
 
   static async getUserEnrollments(userId: string) {
-    return prisma.enrollment.findMany({
+    const enrollments = await prisma.enrollment.findMany({
       where: { userId, status: 'ACTIVE' },
       include: {
         course: {
           select: {
             id: true, title: true, slug: true, thumbnailPublicId: true,
-            instructor: { select: { profile: { select: { displayName: true } } } }
+            instructor: { select: { profile: { select: { displayName: true } } } },
+            sections: {
+              select: {
+                lectures: { select: { id: true } },
+              },
+            },
           }
         }
       },
       orderBy: { createdAt: 'desc' }
+    });
+
+    const enrollmentIds = enrollments.map(e => e.id);
+    const completedCounts = await prisma.lectureProgress.groupBy({
+      by: ['enrollmentId'],
+      where: {
+        enrollmentId: { in: enrollmentIds },
+        isCompleted: true,
+      },
+      _count: { id: true },
+    });
+
+    const completedMap = new Map(
+      completedCounts.map(c => [c.enrollmentId, c._count.id])
+    );
+
+    return enrollments.map(enrollment => {
+      const totalLectures = enrollment.course.sections.reduce(
+        (sum, section) => sum + section.lectures.length,
+        0,
+      );
+      const completedCount = completedMap.get(enrollment.id) ?? 0;
+      const progressPercent = totalLectures > 0
+        ? Math.round((completedCount / totalLectures) * 100)
+        : 0;
+
+      // Remove sections from the response (only needed for counting)
+      const { sections, ...courseWithoutSections } = enrollment.course;
+      return {
+        ...enrollment,
+        course: courseWithoutSections,
+        progressPercent,
+      };
     });
   }
 
@@ -103,8 +220,16 @@ export class EnrollmentService {
             lectures: {
               orderBy: { order: 'asc' },
               select: {
-                id: true, title: true, type: true, duration: true, isPreview: true, order: true
-                // Note: videoPublicId is EXCLUDED to satisfy hard constraint
+                id: true,
+                title: true,
+                order: true,
+                type: true,
+                videoStatus: true,
+                hlsUrl: true,
+                duration: true,
+                fileSizeBytes: true,
+                isPreview: true,
+                // videoPublicId is intentionally EXCLUDED - never expose to client
               }
             }
           }
@@ -116,6 +241,88 @@ export class EnrollmentService {
       where: { userId, enrollmentId: enrollment.id }
     });
 
-    return { course, progress };
+    return { course, progress, enrollmentId: enrollment.id };
+  }
+
+  /**
+   * Request a refund for a course enrollment.
+   * Auto-approves if < 30 days since enrollment AND < 30% lectures completed.
+   */
+  static async requestRefund(userId: string, courseId: string) {
+    const enrollment = await prisma.enrollment.findUnique({
+      where: { userId_courseId: { userId, courseId } },
+      include: {
+        course: {
+          include: {
+            sections: {
+              include: {
+                lectures: { select: { id: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!enrollment || enrollment.status !== 'ACTIVE') {
+      throw new Error('No active enrollment found');
+    }
+
+    // Check < 30 days since enrollment
+    const daysSinceEnrollment = (Date.now() - enrollment.createdAt.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceEnrollment >= 30) {
+      throw new Error('Refund not eligible: enrollment is older than 30 days');
+    }
+
+    // Check < 30% of lectures completed
+    const totalLectures = enrollment.course.sections.reduce(
+      (sum, section) => sum + section.lectures.length,
+      0,
+    );
+
+    if (totalLectures > 0) {
+      const completedCount = await prisma.lectureProgress.count({
+        where: {
+          enrollmentId: enrollment.id,
+          isCompleted: true,
+        },
+      });
+
+      if (completedCount / totalLectures >= 0.3) {
+        throw new Error('Refund not eligible: more than 30% of lectures completed');
+      }
+    }
+
+    // Auto-approve: issue Stripe refund if there was a payment
+    if (enrollment.paymentIntentId) {
+      await stripe.refunds.create({
+        payment_intent: enrollment.paymentIntentId,
+      });
+    }
+
+    // Update enrollment status
+    const updated = await prisma.enrollment.update({
+      where: { id: enrollment.id },
+      data: {
+        status: 'REFUNDED',
+        refundedAt: new Date(),
+      },
+    });
+
+    // Send refund approved notification
+    try {
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { phone: true, email: true } });
+      await NotificationService.notifyRefundApproved(
+        userId,
+        enrollment.course.title,
+        Number(enrollment.paidAmount),
+        user?.phone,
+        user?.email,
+      );
+    } catch (notifyErr) {
+      console.error('Failed to send refund notification:', notifyErr);
+    }
+
+    return updated;
   }
 }

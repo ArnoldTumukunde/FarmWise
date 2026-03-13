@@ -21,8 +21,8 @@ let _db: IDBPDatabase | null = null;
 
 export async function getDb() {
   if (_db) return _db;
-  _db = await openDB('farmwise', 1, {
-    upgrade(db) {
+  _db = await openDB('farmwise', 2, {
+    upgrade(db, oldVersion) {
       // Object store for download state; key = lectureId
       if (!db.objectStoreNames.contains('downloads')) {
         db.createObjectStore('downloads', { keyPath: 'lectureId' });
@@ -30,6 +30,10 @@ export async function getDb() {
       // Object store for unsynchronised progress; key = lectureId
       if (!db.objectStoreNames.contains('pendingProgress')) {
         db.createObjectStore('pendingProgress', { keyPath: 'lectureId' });
+      }
+      // Object store for auth tokens (used by service worker for background sync)
+      if (!db.objectStoreNames.contains('auth')) {
+        db.createObjectStore('auth');
       }
     },
   });

@@ -20,3 +20,13 @@ export const getEnrolledContent = async (req: AuthRequest, res: Response) => {
     res.status(403).json({ error: error.message });
   }
 };
+
+export const requestRefund = async (req: AuthRequest, res: Response) => {
+  try {
+    const { courseId } = req.params;
+    const enrollment = await EnrollmentService.requestRefund(req.user!.id, courseId);
+    res.json({ success: true, enrollment });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
