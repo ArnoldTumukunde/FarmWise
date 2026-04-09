@@ -30,6 +30,110 @@ async function main() {
     }
     console.log('Categories seeded.');
 
+    // ─── Subcategories ─────────────────────────────────────────────────────────
+    console.log('Seeding subcategories...');
+
+    const subcategories: { parent: string; children: { name: string; slug: string; description: string }[] }[] = [
+        {
+            parent: 'crop-farming',
+            children: [
+                { name: 'Maize & Cereals', slug: 'maize-cereals', description: 'Growing maize, wheat, millet, and sorghum.' },
+                { name: 'Root Crops', slug: 'root-crops', description: 'Cassava, sweet potatoes, and yams.' },
+                { name: 'Fruits & Vegetables', slug: 'fruits-vegetables', description: 'Tomatoes, bananas, mangoes, and more.' },
+                { name: 'Cash Crops', slug: 'cash-crops', description: 'Coffee, tea, cotton, and tobacco.' },
+                { name: 'Rice Farming', slug: 'rice-farming', description: 'Lowland and upland rice cultivation.' },
+            ],
+        },
+        {
+            parent: 'livestock-poultry',
+            children: [
+                { name: 'Poultry Farming', slug: 'poultry-farming', description: 'Chicken, turkey, and duck rearing.' },
+                { name: 'Dairy Farming', slug: 'dairy-farming', description: 'Milk production and cattle management.' },
+                { name: 'Goat & Sheep', slug: 'goat-sheep', description: 'Small ruminant husbandry.' },
+                { name: 'Pig Farming', slug: 'pig-farming', description: 'Swine production and management.' },
+                { name: 'Beekeeping', slug: 'beekeeping', description: 'Honey production and apiary management.' },
+            ],
+        },
+        {
+            parent: 'soil-health',
+            children: [
+                { name: 'Composting', slug: 'composting', description: 'Making and using organic compost.' },
+                { name: 'Soil Testing', slug: 'soil-testing', description: 'Understanding soil nutrients and pH.' },
+                { name: 'Mulching & Cover Crops', slug: 'mulching-cover-crops', description: 'Soil conservation techniques.' },
+            ],
+        },
+        {
+            parent: 'pest-disease-control',
+            children: [
+                { name: 'Integrated Pest Management', slug: 'integrated-pest-management', description: 'Biological and cultural pest control.' },
+                { name: 'Plant Diseases', slug: 'plant-diseases', description: 'Identifying and treating crop diseases.' },
+                { name: 'Weed Management', slug: 'weed-management', description: 'Controlling weeds effectively.' },
+            ],
+        },
+        {
+            parent: 'water-irrigation',
+            children: [
+                { name: 'Drip Irrigation', slug: 'drip-irrigation', description: 'Low-cost drip systems for smallholders.' },
+                { name: 'Rainwater Harvesting', slug: 'rainwater-harvesting', description: 'Collecting and storing rain for farming.' },
+                { name: 'Sprinkler Systems', slug: 'sprinkler-systems', description: 'Sprinkler setup and maintenance.' },
+            ],
+        },
+        {
+            parent: 'agribusiness',
+            children: [
+                { name: 'Farm Accounting', slug: 'farm-accounting', description: 'Tracking costs, revenue, and profit.' },
+                { name: 'Market Access', slug: 'market-access', description: 'Finding buyers and selling produce.' },
+                { name: 'Value Addition', slug: 'value-addition', description: 'Processing and packaging for higher returns.' },
+                { name: 'Cooperative Management', slug: 'cooperative-management', description: 'Running farmer groups and SACCOs.' },
+            ],
+        },
+        {
+            parent: 'post-harvest',
+            children: [
+                { name: 'Grain Storage', slug: 'grain-storage', description: 'Hermetic bags, silos, and drying.' },
+                { name: 'Food Processing', slug: 'food-processing', description: 'Milling, drying, and preservation.' },
+                { name: 'Cold Chain', slug: 'cold-chain', description: 'Keeping perishables fresh.' },
+            ],
+        },
+        {
+            parent: 'farm-technology',
+            children: [
+                { name: 'Precision Farming', slug: 'precision-farming', description: 'GPS, sensors, and data-driven decisions.' },
+                { name: 'Farm Mechanisation', slug: 'farm-mechanisation', description: 'Tractors, tillers, and equipment.' },
+                { name: 'Mobile Apps for Farmers', slug: 'mobile-apps-farmers', description: 'Using smartphone tools on the farm.' },
+            ],
+        },
+        {
+            parent: 'climate-environment',
+            children: [
+                { name: 'Climate-Smart Agriculture', slug: 'climate-smart-agriculture', description: 'Adapting to changing weather patterns.' },
+                { name: 'Agroforestry', slug: 'agroforestry', description: 'Trees and crops on the same land.' },
+                { name: 'Soil & Water Conservation', slug: 'soil-water-conservation', description: 'Terracing, contour farming, and more.' },
+            ],
+        },
+        {
+            parent: 'organic-farming',
+            children: [
+                { name: 'Organic Certification', slug: 'organic-certification', description: 'Getting certified for premium markets.' },
+                { name: 'Natural Pesticides', slug: 'natural-pesticides', description: 'Homemade pest solutions.' },
+                { name: 'Permaculture', slug: 'permaculture', description: 'Designing self-sustaining farm systems.' },
+            ],
+        },
+    ];
+
+    for (const group of subcategories) {
+        const parent = await prisma.category.findUnique({ where: { slug: group.parent } });
+        if (!parent) continue;
+        for (const child of group.children) {
+            await prisma.category.upsert({
+                where: { slug: child.slug },
+                update: { parentId: parent.id },
+                create: { ...child, parentId: parent.id },
+            });
+        }
+    }
+    console.log('Subcategories seeded.');
+
     // ─── Dummy Instructor (Teacher) ──────────────────────────────────────────
     console.log('Seeding dummy instructor...');
     const instructor = await prisma.user.upsert({

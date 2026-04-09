@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
+import { anim } from '@/lib/animations';
 
 const benefits = [
   'Works offline, even without internet',
@@ -9,26 +11,15 @@ const benefits = [
 ];
 
 export function HeroBanner() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <section className="relative min-h-[600px] md:min-h-[700px] overflow-hidden">
-      {/* Inline fadeIn keyframes */}
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.8s ease-out forwards;
-        }
-        .animate-fadeIn-delay {
-          animation: fadeIn 0.8s ease-out 0.3s forwards;
-          opacity: 0;
-        }
-      `}</style>
-
-      {/* Background gradient simulating farmland */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#1A2E1A] via-[#2E7D32]/80 to-[#1A2E1A]" />
-      {/* Subtle dot-grid texture */}
       <div
         className="absolute inset-0 opacity-10"
         style={{
@@ -40,18 +31,24 @@ export function HeroBanner() {
       <div className="absolute inset-0 bg-black/30" />
 
       <div className="relative max-w-7xl mx-auto px-4 py-16 md:py-24 flex flex-col lg:grid lg:grid-cols-12 lg:gap-8 lg:items-center min-h-[600px] md:min-h-[700px]">
-        {/* Left: text */}
-        <div className="lg:col-span-7 space-y-6 text-white animate-fadeIn">
+        <div className="lg:col-span-7 space-y-6 text-white">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
-            Grow your farm.
+            <span className="inline-block" style={anim.harvestReveal(mounted, 0)}>
+              Grow your farm.
+            </span>
             <br />
-            Grow your knowledge.
+            <span className="inline-block" style={anim.harvestReveal(mounted, 150)}>
+              Grow your knowledge.
+            </span>
           </h1>
-          <p className="text-lg md:text-xl text-white/80 max-w-lg">
+          <p
+            className="text-lg md:text-xl text-white/80 max-w-lg"
+            style={anim.soilRise(mounted, 300)}
+          >
             Expert courses on crops, livestock, soil health, and more — built
             for farmers, downloadable for offline use in the field.
           </p>
-          <div className="flex flex-wrap gap-3 pt-2">
+          <div className="flex flex-wrap gap-3 pt-2" style={anim.soilRise(mounted, 450)}>
             <Link
               to="/courses?filter=free"
               className="inline-flex items-center px-6 py-3 bg-[#F57F17] hover:bg-[#FFB300] text-white font-semibold rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F57F17] focus-visible:ring-offset-2"
@@ -65,10 +62,21 @@ export function HeroBanner() {
               See how it works &darr;
             </a>
           </div>
+
+          <div className="flex flex-wrap gap-3" style={anim.soilRise(mounted, 600)}>
+            <span className="text-sm text-white/70 bg-white/10 px-3 py-1.5 rounded-full">
+              12,000+ farmers
+            </span>
+            <span className="text-sm text-white/70 bg-white/10 px-3 py-1.5 rounded-full">
+              Works offline
+            </span>
+            <span className="text-sm text-white/70 bg-white/10 px-3 py-1.5 rounded-full">
+              Free courses
+            </span>
+          </div>
         </div>
 
-        {/* Right: floating card */}
-        <div className="lg:col-span-5 mt-10 lg:mt-0 animate-fadeIn-delay">
+        <div className="lg:col-span-5 mt-10 lg:mt-0" style={anim.heroCard(mounted, 200)}>
           <div className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 lg:sticky lg:top-24">
             <h2 className="text-xl font-bold text-[#1B2B1B] mb-4">
               Start learning — free today

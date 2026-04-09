@@ -1,4 +1,9 @@
 .agent
 .env
+.claude
 node_modules
 AGENT_NOTES.md
+CLAUDE.md
+course_detail_page.md
+ammendments.md
+homepage_ammendments.md

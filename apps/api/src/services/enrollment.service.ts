@@ -202,16 +202,27 @@ export class EnrollmentService {
     });
   }
 
-  static async getEnrolledCourseContent(userId: string, courseId: string) {
+  static async getEnrolledCourseContent(userId: string, courseIdOrSlug: string) {
+    // Resolve slug to course ID if needed
+    let resolvedCourseId = courseIdOrSlug;
+    const isCuid = courseIdOrSlug.length > 20 && !courseIdOrSlug.includes('-');
+    if (!isCuid) {
+      const course = await prisma.course.findFirst({
+        where: { slug: courseIdOrSlug },
+        select: { id: true },
+      });
+      if (course) resolvedCourseId = course.id;
+    }
+
     const enrollment = await prisma.enrollment.findUnique({
-      where: { userId_courseId: { userId, courseId } }
+      where: { userId_courseId: { userId, courseId: resolvedCourseId } }
     });
     if (!enrollment || enrollment.status !== 'ACTIVE') {
       throw new Error('Not enrolled');
     }
 
     const course = await prisma.course.findUnique({
-      where: { id: courseId },
+      where: { id: resolvedCourseId },
       include: {
         instructor: { select: { profile: { select: { displayName: true } } } },
         sections: {
@@ -229,6 +240,8 @@ export class EnrollmentService {
                 duration: true,
                 fileSizeBytes: true,
                 isPreview: true,
+                content: true,
+                quizData: true,
                 // videoPublicId is intentionally EXCLUDED - never expose to client
               }
             }
@@ -241,7 +254,16 @@ export class EnrollmentService {
       where: { userId, enrollmentId: enrollment.id }
     });
 
-    return { course, progress, enrollmentId: enrollment.id };
+    // Map progress to include completedLectureIds for client convenience
+    const completedLectureIds = progress
+      .filter(p => p.isCompleted)
+      .map(p => p.lectureId);
+
+    return {
+      course,
+      progress: { completedLectureIds, records: progress },
+      enrollmentId: enrollment.id,
+    };
   }
 
   /**

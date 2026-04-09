@@ -1,7 +1,112 @@
 @import "tailwindcss";
+@config "../tailwind.config.js";
+@plugin "@tailwindcss/typography";
+
+/* ── Keyframes (unlayered — globally available) ── */
+
+@keyframes zoom-in-95 {
+  0%   { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes seedGrow {
+  0%   { transform: scaleY(0) translateY(20px); opacity: 0; }
+  60%  { transform: scaleY(1.05) translateY(-3px); opacity: 1; }
+  100% { transform: scaleY(1) translateY(0); opacity: 1; }
+}
+
+@keyframes soilRise {
+  0%   { transform: translateY(40px); opacity: 0; filter: blur(4px); }
+  100% { transform: translateY(0); opacity: 1; filter: blur(0px); }
+}
+
+@keyframes fieldRow {
+  0%   { transform: scaleX(0); opacity: 0; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+
+@keyframes rainDrop {
+  0%   { transform: translateY(-12px) scaleY(0.6); opacity: 0; }
+  40%  { opacity: 1; }
+  100% { transform: translateY(0) scaleY(1); opacity: 1; }
+}
+
+@keyframes harvestReveal {
+  0%   { clip-path: inset(0 100% 0 0); opacity: 0; }
+  100% { clip-path: inset(0 0% 0 0); opacity: 1; }
+}
+
+@keyframes leafSway {
+  0%, 100% { transform: rotate(-4deg) translateX(0); }
+  50%      { transform: rotate(4deg) translateX(6px); }
+}
+
+@keyframes countCrop {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes sproutUp {
+  0%   { transform: scaleY(0); }
+  70%  { transform: scaleY(1.08); }
+  100% { transform: scaleY(1); }
+}
+
+@keyframes scrollCategories {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes heroCardSlide {
+  0%   { transform: translateX(20px) translateY(40px); opacity: 0; filter: blur(4px); }
+  100% { transform: translateX(0) translateY(0); opacity: 1; filter: blur(0px); }
+}
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* TipTap editor styles */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #5A6E5A80;
+  pointer-events: none;
+  height: 0;
+}
+
+.tiptap img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1rem auto;
+  display: block;
+}
+
+.tiptap iframe {
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 16 / 9;
+  border-radius: 0.5rem;
+  margin: 1rem auto;
+  display: block;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid #2E7D32;
+  padding-left: 1rem;
+  color: #5A6E5A;
+  font-style: italic;
+}
+
+/* ── Tailwind v4 custom utilities ── */
+
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }

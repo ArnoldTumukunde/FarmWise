@@ -22,7 +22,7 @@ let _db: IDBPDatabase | null = null;
 export async function getDb() {
   if (_db) return _db;
   _db = await openDB('farmwise', 2, {
-    upgrade(db, oldVersion) {
+    upgrade(db) {
       // Object store for download state; key = lectureId
       if (!db.objectStoreNames.contains('downloads')) {
         db.createObjectStore('downloads', { keyPath: 'lectureId' });

@@ -35,6 +35,8 @@ model User {
   reviewedApplications   InstructorApplication[] @relation("ApplicationReviewer")
   answerUpvotes  AnswerUpvote[]
   reviewUpvotes  ReviewUpvote[]
+  wishlist       Wishlist[]
+  auditLogs      AuditLog[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
@@ -95,6 +97,7 @@ model Course {
   enrollments          Enrollment[]
   reviews              Review[]
   cartItems            CartItem[]
+  wishlists            Wishlist[]
   coupons              Coupon[]
   outcomes             String[]
   requirements         String[]
@@ -128,6 +131,7 @@ model Category {
   slug        String     @unique
   description String?
   iconName    String?
+  imageUrl    String?    // Homepage carousel image URL
   parentId    String?
   parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id])
   children    Category[] @relation("CategoryTree")
@@ -257,6 +261,20 @@ model CartItem {
   course   Course @relation(fields: [courseId], references: [id])
 
   @@unique([cartId, courseId])
+}
+
+// ─── WISHLIST ────────────────────────────────────────────────────────────────
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  courseId   String
+  course    Course   @relation(fields: [courseId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@index([userId])
 }
 
 // ─── ENROLLMENT & PAYMENTS ─────────────────────────────────────────────────
@@ -472,4 +490,56 @@ enum NotificationType {
   CERTIFICATE_EARNED
   ANNOUNCEMENT
   INSTRUCTOR_APPLICATION_REVIEWED // Sent to applicant when admin approves or rejects
+}
+
+// ─── CMS: PLATFORM CONFIG (key-value store) ──────────────────────────────
+
+model PlatformConfig {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+// ─── CMS: HOMEPAGE CONFIGURATION ─────────────────────────────────────────
+
+model HomepageSection {
+  id        String   @id @default(cuid())
+  key       String   @unique  // e.g. "hero", "categories", "featured", "howItWorks", "instructors", "testimonials", "teachCTA", "faq"
+  label     String             // Human-readable name
+  enabled   Boolean  @default(true)
+  order     Int      @default(0)
+  config    Json?              // Section-specific config (hero text, CTA urls, etc.)
+  updatedAt DateTime @updatedAt
+}
+
+// ─── CMS: STATIC PAGES ──────────────────────────────────────────────────
+
+model Page {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  title       String
+  content     String     @db.Text   // HTML content (sanitized server-side)
+  isPublished Boolean    @default(false)
+  metaTitle   String?
+  metaDesc    String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+// ─── CMS: AUDIT LOG ─────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  admin      User     @relation(fields: [adminId], references: [id])
+  action     String   // e.g. "settings.update", "page.create", "course.moderate"
+  entity     String?  // e.g. "Page", "Course", "User"
+  entityId   String?
+  details    Json?    // Before/after snapshot or relevant metadata
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt])
 }

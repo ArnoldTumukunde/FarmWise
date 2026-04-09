@@ -5,9 +5,9 @@ import { cloudinarySignatureLimiter } from '../middleware/rate-limit.middleware'
 
 const router = Router();
 
-// /sign needs instructor — support both GET (thumbnail from frontend) and POST (legacy)
-router.get('/sign', requireAuth, requireInstructor, cloudinarySignatureLimiter, getUploadSignature);
-router.post('/sign', requireAuth, requireInstructor, cloudinarySignatureLimiter, getUploadSignature);
+// /sign — avatar uploads open to all authenticated users; course media needs instructor
+router.get('/sign', requireAuth, cloudinarySignatureLimiter, getUploadSignature);
+router.post('/sign', requireAuth, cloudinarySignatureLimiter, getUploadSignature);
 
 // Webhooks must be public (Cloudinary calls them)
 router.post('/video-ready', handleVideoReadyWebhook);

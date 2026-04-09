@@ -9,7 +9,14 @@ import {
   Clock,
   AlertTriangle,
   ArrowRight,
+  GraduationCap,
+  RotateCcw,
+  CheckCircle,
 } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, LineChart, Line, Legend,
+} from 'recharts';
 
 const formatUGX = (amount: number) =>
   new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', maximumFractionDigits: 0 }).format(amount);
@@ -142,6 +149,105 @@ export function AdminDashboard() {
               );
             })}
       </div>
+
+      {/* ── Action Queue Cards ── */}
+      {!loading && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            {
+              count: stats?.pendingCoursesCount || 0,
+              label: 'courses pending review',
+              link: '/admin/courses?filter=pending',
+              icon: BookOpen,
+            },
+            {
+              count: stats?.pendingApplications?.length || 0,
+              label: 'instructor applications pending',
+              link: '/admin/users?filter=instructor_applications',
+              icon: GraduationCap,
+            },
+            {
+              count: stats?.openRefundsCount || 0,
+              label: 'open refund requests',
+              link: '/admin/refunds?filter=open',
+              icon: RotateCcw,
+            },
+          ].map((q) => (
+            <Link
+              key={q.label}
+              to={q.link}
+              className={`flex items-center gap-4 p-4 rounded-xl border transition-shadow hover:shadow-md ${
+                q.count > 0
+                  ? 'border-amber-300 bg-amber-50'
+                  : 'border-[#2E7D32]/20 bg-green-50'
+              }`}
+            >
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                q.count > 0 ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-[#2E7D32]'
+              }`}>
+                {q.count > 0 ? <q.icon size={18} /> : <CheckCircle size={18} />}
+              </div>
+              <div>
+                <p className={`text-sm font-semibold ${q.count > 0 ? 'text-amber-800' : 'text-[#2E7D32]'}`}>
+                  {q.count > 0 ? `${q.count} ${q.label}` : 'All clear'}
+                </p>
+                {q.count === 0 && (
+                  <p className="text-xs text-[#5A6E5A]">No {q.label}</p>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* ── Charts Section ── */}
+      {!loading && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Revenue Chart */}
+          <div className="bg-white rounded-xl border border-[#2E7D32]/10 p-6">
+            <h2 className="text-lg font-semibold text-[#1B2B1B] mb-4">Platform Revenue (12 months)</h2>
+            {stats?.revenueByMonth?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={stats.revenueByMonth}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#5A6E5A' }} />
+                  <YAxis tick={{ fontSize: 12, fill: '#5A6E5A' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(value: any) => formatUGX(Number(value))} />
+                  <Legend />
+                  <Bar dataKey="gross" name="Gross" fill="#2E7D32" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="net" name="Net" fill="#F57F17" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[280px] flex items-center justify-center text-[#5A6E5A] text-sm">
+                No revenue data yet
+              </div>
+            )}
+          </div>
+
+          {/* Registrations Chart */}
+          <div className="bg-white rounded-xl border border-[#2E7D32]/10 p-6">
+            <h2 className="text-lg font-semibold text-[#1B2B1B] mb-4">New Registrations (30 days)</h2>
+            {stats?.registrationsByDay?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={stats.registrationsByDay}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#5A6E5A' }} />
+                  <YAxis tick={{ fontSize: 12, fill: '#5A6E5A' }} />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="farmers" name="Farmers" stroke="#2E7D32" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="instructors" name="Instructors" stroke="#F57F17" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[280px] flex items-center justify-center text-[#5A6E5A] text-sm">
+                No registration data yet
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Two-column: Recent Users + Recent Courses ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

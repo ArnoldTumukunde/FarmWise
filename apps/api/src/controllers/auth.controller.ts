@@ -10,13 +10,17 @@ export class AuthController {
 
     static async register(req: Request, res: Response) {
         try {
-            const { email, phone, password } = req.body;
+            const { email, phone, password, name } = req.body;
             if (email && password) {
                 const hash = await AuthService.hashPassword(password);
-                const result = await AuthService.registerEmail(email, hash);
+                const result = await AuthService.registerEmail(email, hash, name);
+                return res.status(201).json(result);
+            } else if (phone && password) {
+                const hash = await AuthService.hashPassword(password);
+                const result = await AuthService.registerPhone(phone, hash, name);
                 return res.status(201).json(result);
             } else if (phone) {
-                const result = await AuthService.registerPhone(phone);
+                const result = await AuthService.registerPhone(phone, undefined, name);
                 return res.status(201).json(result);
             }
             return res.status(400).json({ error: 'Provide email+password or phone' });
@@ -29,12 +33,12 @@ export class AuthController {
         try {
             const { email, phone, token, otp } = req.body;
             let result;
-            if (email && token) {
+            if (token) {
                 result = await AuthService.verifyEmail(token);
             } else if (phone && otp) {
                 result = await AuthService.verifyPhone(phone, otp);
             } else {
-                return res.status(400).json({ error: 'Provide email+token or phone+otp' });
+                return res.status(400).json({ error: 'Provide token or phone+otp' });
             }
 
             res.cookie('refreshToken', result.refreshToken, {
@@ -50,10 +54,14 @@ export class AuthController {
 
     static async login(req: Request, res: Response) {
         try {
-            const { email, passwordPlain } = req.body;
-            if (!email || !passwordPlain) return res.status(400).json({ error: 'Email and password required' });
+            const { email, phone, passwordPlain } = req.body;
+            if (!passwordPlain || (!email && !phone)) {
+                return res.status(400).json({ error: 'Email or phone plus password required' });
+            }
 
-            const result = await AuthService.loginEmail(email, passwordPlain);
+            const result = email
+                ? await AuthService.loginEmail(email, passwordPlain)
+                : await AuthService.loginPhone(phone, passwordPlain);
 
             res.cookie('refreshToken', result.refreshToken, {
                 httpOnly: true,
@@ -91,22 +99,65 @@ export class AuthController {
     }
 
     static async forgotPassword(req: Request, res: Response) {
-        const { email } = req.body;
-        if (!email) return res.status(400).json({ error: 'Email required' });
-        await AuthService.requestPasswordReset(email);
-        res.json({ success: true, message: 'Reset email sent if user exists' });
+        try {
+            const { email, phone } = req.body;
+            if (!email && !phone) return res.status(400).json({ error: 'Email or phone required' });
+
+            if (phone) {
+                await AuthService.requestPhonePasswordReset(phone);
+                return res.json({ success: true, message: 'OTP sent if account exists' });
+            }
+
+            await AuthService.requestPasswordReset(email);
+            res.json({ success: true, message: 'Reset email sent if user exists' });
+        } catch (error: any) {
+            // Always return success to prevent user enumeration
+            res.json({ success: true });
+        }
     }
 
     static async resetPassword(req: Request, res: Response) {
         try {
-            const { token, newPassword } = req.body;
-            if (!token || !newPassword) return res.status(400).json({ error: 'Token and newPassword required' });
+            const { token, phone, otp, newPassword } = req.body;
+            if (!newPassword) return res.status(400).json({ error: 'newPassword required' });
+            if (!token && (!phone || !otp)) return res.status(400).json({ error: 'Provide token or phone+otp' });
 
             const hash = await AuthService.hashPassword(newPassword);
-            await AuthService.resetPassword(token, hash);
+
+            if (phone && otp) {
+                await AuthService.resetPasswordByPhone(phone, otp, hash);
+            } else {
+                await AuthService.resetPassword(token, hash);
+            }
+
             res.json({ success: true, message: 'Password reset' });
         } catch (error: any) {
             res.status(400).json({ error: error.message });
+        }
+    }
+
+    static async resendOtp(req: Request, res: Response) {
+        try {
+            const { phone } = req.body;
+            if (!phone) return res.status(400).json({ error: 'Phone required' });
+
+            await AuthService.resendVerificationOtp(phone);
+            res.json({ success: true });
+        } catch (error: any) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+
+    static async resendVerification(req: Request, res: Response) {
+        try {
+            const { email } = req.body;
+            if (!email) return res.status(400).json({ error: 'Email required' });
+
+            await AuthService.resendVerificationEmail(email);
+            res.json({ success: true });
+        } catch (error: any) {
+            // Always return success to prevent email enumeration
+            res.json({ success: true });
         }
     }
 }

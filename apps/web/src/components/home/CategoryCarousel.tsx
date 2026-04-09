@@ -1,78 +1,137 @@
-import { Link } from 'react-router-dom';
-import {
-  Wheat,
-  Beef,
-  Sprout,
-  Bug,
-  CloudRain,
-  TrendingUp,
-  Package,
-  Cpu,
-  Sun,
-  Leaf,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { useState, useEffect } from 'react';
+
+import { fetchApi } from '@/lib/api';
+import { useInView } from '@/hooks/useInView';
+import { anim } from '@/lib/animations';
+
+/* ── Types ── */
 
 interface Category {
+  id: string;
   slug: string;
   name: string;
-  icon: LucideIcon;
-  gradient: string;
+  courseCount: number;
+  imageUrl?: string | null;
 }
 
-const categories: Category[] = [
-  { slug: 'crop-farming', name: 'Crop Farming', icon: Wheat, gradient: 'from-green-600 to-green-800' },
-  { slug: 'livestock', name: 'Livestock & Poultry', icon: Beef, gradient: 'from-amber-600 to-amber-800' },
-  { slug: 'soil-health', name: 'Soil Health', icon: Sprout, gradient: 'from-emerald-600 to-emerald-800' },
-  { slug: 'pest-control', name: 'Pest & Disease Control', icon: Bug, gradient: 'from-red-600 to-red-800' },
-  { slug: 'irrigation', name: 'Water & Irrigation', icon: CloudRain, gradient: 'from-blue-600 to-blue-800' },
-  { slug: 'agribusiness', name: 'Agribusiness', icon: TrendingUp, gradient: 'from-purple-600 to-purple-800' },
-  { slug: 'post-harvest', name: 'Post-Harvest', icon: Package, gradient: 'from-orange-600 to-orange-800' },
-  { slug: 'farm-tech', name: 'Farm Technology', icon: Cpu, gradient: 'from-cyan-600 to-cyan-800' },
-  { slug: 'climate', name: 'Climate & Environment', icon: Sun, gradient: 'from-yellow-600 to-yellow-800' },
-  { slug: 'organic', name: 'Organic Farming', icon: Leaf, gradient: 'from-lime-600 to-lime-800' },
+/* ── Photo backgrounds per category (Unsplash) ── */
+
+const CATEGORY_IMAGES: Record<string, string> = {
+  'crop-farming':        'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&q=80',
+  'livestock-poultry':   'https://images.unsplash.com/photo-1500595046743-cd271d694d30?w=400&q=80',
+  'soil-health':         'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&q=80',
+  'pest-disease-control':'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80',
+  'water-irrigation':    'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=400&q=80',
+  'agribusiness':        'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80',
+  'post-harvest':        'https://images.unsplash.com/photo-1533062618053-d51e617307ec?w=400&q=80',
+  'farm-technology':     'https://images.unsplash.com/photo-1581090464777-f3220bbe1b8b?w=400&q=80',
+  'climate-environment': 'https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=400&q=80',
+  'organic-farming':     'https://images.unsplash.com/photo-1586771107445-d3ca888129ff?w=400&q=80',
+};
+
+
+
+/* ── Single card ── */
+
+function CategoryCard({ category, isVisible, index }: {
+  category: Category;
+  isVisible: boolean;
+  index: number;
+}) {
+  const image = category.imageUrl || CATEGORY_IMAGES[category.slug] || 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=400&q=80';
+
+  return (
+    <a
+      href={`/courses?category=${category.slug}`}
+      className="relative flex-shrink-0 overflow-hidden cursor-pointer
+        transition-transform duration-300 hover:-translate-y-2 hover:shadow-2xl
+        w-72 h-96"
+      style={{
+        backgroundImage: `url(${image})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        ...anim.seedGrow(isVisible, index * 60),
+      }}
+    >
+      {/* Bottom gradient overlay for text legibility */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: 'linear-gradient(0deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.15) 45%, transparent 70%)',
+        }}
+      />
+
+      {/* Text — top-left */}
+      <div className="absolute top-4 left-4 right-4">
+        <p className="text-white font-bold text-base leading-snug drop-shadow-lg">
+          {category.name}
+        </p>
+      </div>
+    </a>
+  );
+}
+
+/* ── Fallback static categories ── */
+
+const STATIC_CATEGORIES: Category[] = [
+  { id: '1', slug: 'crop-farming', name: 'Crop Farming', courseCount: 0 },
+  { id: '2', slug: 'livestock-poultry', name: 'Livestock & Poultry', courseCount: 0 },
+  { id: '3', slug: 'soil-health', name: 'Soil Health', courseCount: 0 },
+  { id: '4', slug: 'pest-disease-control', name: 'Pest & Disease Control', courseCount: 0 },
+  { id: '5', slug: 'water-irrigation', name: 'Water & Irrigation', courseCount: 0 },
+  { id: '6', slug: 'agribusiness', name: 'Agribusiness', courseCount: 0 },
+  { id: '7', slug: 'post-harvest', name: 'Post-Harvest', courseCount: 0 },
+  { id: '8', slug: 'farm-technology', name: 'Farm Technology', courseCount: 0 },
+  { id: '9', slug: 'climate-environment', name: 'Climate & Environment', courseCount: 0 },
+  { id: '10', slug: 'organic-farming', name: 'Organic Farming', courseCount: 0 },
 ];
 
-// Duplicate for seamless infinite scroll
-const doubled = [...categories, ...categories];
+/* ── Main carousel ── */
 
 export function CategoryCarousel() {
-  return (
-    <section className="max-w-7xl mx-auto px-4 py-12">
-      <style>{`
-        @keyframes scroll {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
+  const { ref, isInView } = useInView();
+  const [categories, setCategories] = useState<Category[]>(STATIC_CATEGORIES);
+
+  useEffect(() => {
+    fetchApi('/courses/categories')
+      .then((data: any) => {
+        const cats = Array.isArray(data) ? data : data.categories ?? data.data ?? [];
+        if (cats.length > 0) {
+          setCategories(cats.map((c: any) => ({
+            id: c.id,
+            slug: c.slug,
+            name: c.name,
+            courseCount: c.courseCount ?? c._count?.courses ?? 0,
+            imageUrl: c.imageUrl ?? null,
+          })));
         }
-      `}</style>
+      })
+      .catch(() => {});
+  }, []);
 
-      <h2 className="text-2xl font-semibold text-[#1B2B1B] mb-6">
-        Explore by topic
-      </h2>
+  const doubled = [...categories, ...categories];
 
-      <div className="overflow-hidden">
+  return (
+    <section ref={ref} className="overflow-hidden bg-white">
+      {/* Scrolling track */}
+      <div className="relative">
         <div
-          className="flex gap-4 hover:[animation-play-state:paused]"
+          className="flex gap-0"
           style={{
-            animation: 'scroll 40s linear infinite',
             width: 'max-content',
+            animation: 'scrollCategories 40s linear infinite',
           }}
+          onMouseEnter={e => (e.currentTarget.style.animationPlayState = 'paused')}
+          onMouseLeave={e => (e.currentTarget.style.animationPlayState = 'running')}
         >
-          {doubled.map((cat, i) => {
-            const Icon = cat.icon;
-            return (
-              <Link
-                key={`${cat.slug}-${i}`}
-                to={`/courses?categoryId=${cat.slug}`}
-                className={`shrink-0 w-36 h-48 md:w-48 md:h-64 rounded-xl bg-gradient-to-br ${cat.gradient} flex flex-col items-center justify-center gap-4 p-4 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2`}
-              >
-                <Icon className="h-10 w-10 md:h-14 md:w-14 text-white/70" />
-                <span className="text-sm md:text-base font-bold text-white text-center leading-tight">
-                  {cat.name}
-                </span>
-              </Link>
-            );
-          })}
+          {doubled.map((cat, i) => (
+            <CategoryCard
+              key={`${cat.slug}-${i}`}
+              category={cat}
+              isVisible={isInView}
+              index={i < categories.length ? i : 0}
+            />
+          ))}
         </div>
       </div>
     </section>

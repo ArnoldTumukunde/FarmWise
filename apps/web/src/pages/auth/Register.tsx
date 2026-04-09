@@ -1,205 +1,510 @@
-import { useState } from "react";
-import { fetchApi } from "@/lib/api";
-import { useNavigate, Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { Leaf, Loader2, Mail, Phone, Eye, EyeOff } from "lucide-react";
+import { useState, useCallback } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { fetchApi } from '@/lib/api';
+import { useNavigate, Link } from 'react-router-dom';
+import { toast } from 'sonner';
+import { Leaf, Loader2, Eye, EyeOff } from 'lucide-react';
+
+/* ── Schemas ──────────────────────────────────────────── */
+
+const emailSchema = z.object({
+  name: z.string().min(2, 'Please enter your full name').max(80),
+  email: z.string().email('Please enter a valid email address'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters and include a number and uppercase letter')
+    .regex(/[A-Z]/, 'Password must be at least 8 characters and include a number and uppercase letter')
+    .regex(/[0-9]/, 'Password must be at least 8 characters and include a number and uppercase letter'),
+  confirmPassword: z.string(),
+  terms: z.literal(true, { errorMap: () => ({ message: 'You must accept the terms to continue' }) }),
+}).refine((d) => d.password === d.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
+});
+
+const phoneSchema = z.object({
+  name: z.string().min(2, 'Please enter your full name').max(80),
+  countryCode: z.string(),
+  phone: z.string().min(7, 'Please enter a valid mobile number').max(15),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters and include a number and uppercase letter')
+    .regex(/[A-Z]/, 'Password must be at least 8 characters and include a number and uppercase letter')
+    .regex(/[0-9]/, 'Password must be at least 8 characters and include a number and uppercase letter'),
+  terms: z.literal(true, { errorMap: () => ({ message: 'You must accept the terms to continue' }) }),
+});
+
+type EmailForm = z.infer<typeof emailSchema>;
+type PhoneForm = z.infer<typeof phoneSchema>;
+type Method = 'email' | 'phone';
+
+/* ── Password strength ────────────────────────────────── */
+
+function getStrength(pw: string): { level: number; label: string; color: string } {
+  if (!pw) return { level: 0, label: '', color: '' };
+  let types = 0;
+  if (/[a-z]/.test(pw)) types++;
+  if (/[A-Z]/.test(pw)) types++;
+  if (/[0-9]/.test(pw)) types++;
+  if (/[^a-zA-Z0-9]/.test(pw)) types++;
+
+  if (pw.length < 8 || types <= 1) return { level: 1, label: 'Weak', color: 'bg-red-400' };
+  if (types === 2) return { level: 2, label: 'Fair', color: 'bg-amber-400' };
+  if (types === 3) return { level: 3, label: 'Good', color: 'bg-yellow-400' };
+  return { level: 4, label: 'Strong', color: 'bg-primary' };
+}
+
+const LABEL_COLORS: Record<string, string> = {
+  Weak: 'text-red-500',
+  Fair: 'text-amber-500',
+  Good: 'text-yellow-600',
+  Strong: 'text-primary',
+};
+
+const COUNTRIES = [
+  { code: '+256', flag: '🇺🇬', name: 'Uganda' },
+  { code: '+254', flag: '🇰🇪', name: 'Kenya' },
+  { code: '+255', flag: '🇹🇿', name: 'Tanzania' },
+  { code: '+250', flag: '🇷🇼', name: 'Rwanda' },
+  { code: '+233', flag: '🇬🇭', name: 'Ghana' },
+];
+
+/* ── Component ────────────────────────────────────────── */
 
 export default function Register() {
-    const [email, setEmail] = useState("");
-    const [phone, setPhone] = useState("");
-    const [password, setPassword] = useState("");
-    const [useEmail, setUseEmail] = useState(true);
-    const [error, setError] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const [method, setMethod] = useState<Method>('email');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [serverError, setServerError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [hasAttempted, setHasAttempted] = useState(false);
 
-    const passwordStrength = password.length === 0
-        ? null
-        : password.length < 6
-            ? "weak"
-            : password.length < 10
-                ? "fair"
-                : "strong";
+  // Email form
+  const emailForm = useForm<EmailForm>({
+    mode: 'onBlur',
+    defaultValues: { name: '', email: '', password: '', confirmPassword: '', terms: false as any },
+  });
 
-    const handleRegister = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError("");
-        setLoading(true);
-        try {
-            const payload = useEmail ? { email, password } : { phone };
-            await fetchApi("/auth/register", {
-                method: "POST",
-                body: JSON.stringify(payload),
-            });
-            toast.success(
-                "Account created! Check your " + (useEmail ? "email" : "phone") + " for verification."
-            );
-            setTimeout(() => navigate("/login"), 2000);
-        } catch (err: any) {
-            setError(err.message);
-            toast.error(err.message || "Registration failed");
-        } finally {
-            setLoading(false);
-        }
-    };
+  // Phone form
+  const phoneForm = useForm<PhoneForm>({
+    mode: 'onBlur',
+    defaultValues: { name: '', countryCode: '+256', phone: '', password: '', terms: false as any },
+  });
 
-    return (
-        <div className="flex-1 flex items-center justify-center p-4 py-12">
-            <Card className="w-full max-w-md shadow-lg border-gray-200">
-                <CardHeader className="text-center pb-2 pt-8">
-                    <div className="flex items-center justify-center gap-2 mb-4">
-                        <Leaf className="h-8 w-8 text-[#2E7D32]" />
-                        <span className="text-2xl font-bold text-[#2E7D32]">FarmWise</span>
+  const activeForm = method === 'email' ? emailForm : phoneForm;
+  const password = activeForm.watch('password');
+  const strength = getStrength(password || '');
+
+  const onSubmitEmail = useCallback(async (data: EmailForm) => {
+    setHasAttempted(true);
+    setServerError('');
+    setSubmitting(true);
+
+    // Validate with zod
+    const result = emailSchema.safeParse(data);
+    if (!result.success) {
+      result.error.errors.forEach((e) => {
+        emailForm.setError(e.path[0] as any, { message: e.message });
+      });
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      await fetchApi('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ name: data.name, email: data.email, password: data.password }),
+      });
+      sessionStorage.setItem('verifyEmail', data.email);
+      navigate('/register/verify-email');
+    } catch (err: any) {
+      if (err.status === 409) {
+        emailForm.setError('email', {
+          message: 'An account with this email already exists.',
+        });
+      } else {
+        setServerError(err.message || 'Registration failed. Please try again.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }, [emailForm, navigate]);
+
+  const onSubmitPhone = useCallback(async (data: PhoneForm) => {
+    setHasAttempted(true);
+    setServerError('');
+    setSubmitting(true);
+
+    const result = phoneSchema.safeParse(data);
+    if (!result.success) {
+      result.error.errors.forEach((e) => {
+        phoneForm.setError(e.path[0] as any, { message: e.message });
+      });
+      setSubmitting(false);
+      return;
+    }
+
+    const fullPhone = `${data.countryCode}${data.phone.replace(/^0+/, '')}`;
+    try {
+      await fetchApi('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ name: data.name, phone: fullPhone, password: data.password }),
+      });
+      sessionStorage.setItem('verifyPhone', fullPhone);
+      navigate('/register/verify-phone');
+    } catch (err: any) {
+      if (err.status === 409) {
+        phoneForm.setError('phone', {
+          message: 'An account with this phone number already exists.',
+        });
+      } else {
+        setServerError(err.message || 'Registration failed. Please try again.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }, [phoneForm, navigate]);
+
+  const emailErrors = emailForm.formState.errors;
+  const phoneErrors = phoneForm.formState.errors;
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-surface px-4 py-12">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+          {/* Logo */}
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Leaf className="h-7 w-7 text-primary" />
+            <span className="text-2xl font-bold text-primary">FarmWise</span>
+          </div>
+          <p className="text-sm text-text-muted text-center mt-1 mb-6">
+            Join 12,000+ farmers learning with FarmWise
+          </p>
+
+          {/* Google OAuth */}
+          <button
+            type="button"
+            className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2.5 text-sm font-medium text-text-base hover:bg-gray-50 transition-colors duration-150 mb-5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
+            <img src="/icons/google.svg" alt="" width={18} height={18} />
+            Continue with Google
+          </button>
+
+          <div className="flex items-center gap-3 mb-5">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-text-muted">or register with</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+
+          {/* Method toggle */}
+          <div className="flex rounded-lg border border-gray-200 mb-5 p-0.5 bg-gray-50">
+            <button
+              type="button"
+              onClick={() => { setMethod('email'); setServerError(''); }}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                method === 'email' ? 'bg-white shadow-sm text-text-base' : 'text-text-muted'
+              }`}
+            >
+              Email
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMethod('phone'); setServerError(''); }}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                method === 'phone' ? 'bg-white shadow-sm text-text-base' : 'text-text-muted'
+              }`}
+            >
+              Phone
+            </button>
+          </div>
+
+          {serverError && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm mb-4">
+              {serverError}
+            </div>
+          )}
+
+          {/* ─── Email Form ─── */}
+          {method === 'email' && (
+            <form onSubmit={emailForm.handleSubmit(onSubmitEmail)} className="space-y-4" noValidate>
+              {/* Full Name */}
+              <div>
+                <label htmlFor="e-name" className="block text-sm font-medium text-text-base mb-1">Full Name</label>
+                <input
+                  id="e-name"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="Your full name"
+                  {...emailForm.register('name', { required: 'Please enter your full name', minLength: { value: 2, message: 'Please enter your full name' } })}
+                  className={`w-full h-11 px-3 rounded-lg border text-sm text-text-base placeholder:text-text-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                    emailErrors.name ? 'border-red-400' : 'border-gray-300'
+                  }`}
+                />
+                {emailErrors.name && <p className="text-sm text-red-500 mt-1">{emailErrors.name.message}</p>}
+              </div>
+
+              {/* Email */}
+              <div>
+                <label htmlFor="e-email" className="block text-sm font-medium text-text-base mb-1">Email Address</label>
+                <input
+                  id="e-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  {...emailForm.register('email', { required: 'Please enter a valid email address' })}
+                  className={`w-full h-11 px-3 rounded-lg border text-sm text-text-base placeholder:text-text-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                    emailErrors.email ? 'border-red-400' : 'border-gray-300'
+                  }`}
+                />
+                {emailErrors.email && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {emailErrors.email.message}
+                    {emailErrors.email.message?.includes('already exists') && (
+                      <> <Link to="/login" className="text-primary font-semibold underline">Sign in instead →</Link></>
+                    )}
+                  </p>
+                )}
+              </div>
+
+              {/* Password */}
+              <div>
+                <label htmlFor="e-password" className="block text-sm font-medium text-text-base mb-1">Password</label>
+                <div className="relative">
+                  <input
+                    id="e-password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    placeholder="Create a password"
+                    {...emailForm.register('password', {
+                      required: 'Password must be at least 8 characters and include a number and uppercase letter',
+                      minLength: { value: 8, message: 'Password must be at least 8 characters and include a number and uppercase letter' },
+                    })}
+                    className={`w-full h-11 px-3 pr-10 rounded-lg border text-sm text-text-base placeholder:text-text-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                      emailErrors.password ? 'border-red-400' : 'border-gray-300'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-base"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {/* Strength bar */}
+                {password && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="flex gap-1 flex-1">
+                      {[1, 2, 3, 4].map((seg) => (
+                        <div
+                          key={seg}
+                          className={`h-1.5 flex-1 rounded-full transition-colors ${
+                            seg <= strength.level ? strength.color : 'bg-gray-200'
+                          }`}
+                        />
+                      ))}
                     </div>
-                    <h1 className="text-2xl font-bold text-[#1B2B1B]">Create your account</h1>
-                    <p className="text-sm text-[#5A6E5A] mt-1">Join FarmWise to access agricultural courses.</p>
-                </CardHeader>
-                <CardContent className="px-6 pb-2">
-                    {/* Tab switch */}
-                    <div className="flex rounded-lg bg-gray-100 p-1 mb-6">
-                        <button
-                            type="button"
-                            onClick={() => { setUseEmail(true); setError(""); }}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2 ${
-                                useEmail
-                                    ? "bg-white text-[#2E7D32] shadow-sm"
-                                    : "text-[#5A6E5A] hover:text-[#1B2B1B]"
-                            }`}
-                        >
-                            <Mail className="h-4 w-4" />
-                            Email
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => { setUseEmail(false); setError(""); }}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2 ${
-                                !useEmail
-                                    ? "bg-white text-[#2E7D32] shadow-sm"
-                                    : "text-[#5A6E5A] hover:text-[#1B2B1B]"
-                            }`}
-                        >
-                            <Phone className="h-4 w-4" />
-                            Phone
-                        </button>
+                    <span className={`text-xs font-medium ${LABEL_COLORS[strength.label] || ''}`}>
+                      {strength.label}
+                    </span>
+                  </div>
+                )}
+                {emailErrors.password && <p className="text-sm text-red-500 mt-1">{emailErrors.password.message}</p>}
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label htmlFor="e-confirm" className="block text-sm font-medium text-text-base mb-1">Confirm Password</label>
+                <div className="relative">
+                  <input
+                    id="e-confirm"
+                    type={showConfirm ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    placeholder="Repeat your password"
+                    {...emailForm.register('confirmPassword', {
+                      required: 'Passwords do not match',
+                      validate: (val) => val === emailForm.getValues('password') || 'Passwords do not match',
+                    })}
+                    className={`w-full h-11 px-3 pr-10 rounded-lg border text-sm text-text-base placeholder:text-text-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                      emailErrors.confirmPassword ? 'border-red-400' : 'border-gray-300'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(!showConfirm)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-base"
+                    tabIndex={-1}
+                  >
+                    {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {emailErrors.confirmPassword && <p className="text-sm text-red-500 mt-1">{emailErrors.confirmPassword.message}</p>}
+              </div>
+
+              {/* Terms */}
+              <label className="flex items-start gap-2.5 text-xs text-text-muted cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...emailForm.register('terms', { required: 'You must accept the terms to continue' })}
+                  className="mt-0.5 accent-primary flex-shrink-0"
+                />
+                <span>
+                  I agree to FarmWise's{' '}
+                  <a href="/terms" className="text-primary underline">Terms of Service</a>
+                  {' '}and{' '}
+                  <a href="/privacy" className="text-primary underline">Privacy Policy</a>
+                </span>
+              </label>
+              {emailErrors.terms && <p className="text-sm text-red-500 -mt-2">{emailErrors.terms.message}</p>}
+
+              <button
+                type="submit"
+                disabled={submitting || (hasAttempted && !emailForm.formState.isValid)}
+                className="w-full bg-primary hover:bg-primary-light text-white font-semibold py-3 rounded-lg transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                {submitting && <Loader2 size={16} className="animate-spin" />}
+                {submitting ? 'Creating account…' : 'Create Free Account'}
+              </button>
+            </form>
+          )}
+
+          {/* ─── Phone Form ─── */}
+          {method === 'phone' && (
+            <form onSubmit={phoneForm.handleSubmit(onSubmitPhone)} className="space-y-4" noValidate>
+              {/* Full Name */}
+              <div>
+                <label htmlFor="p-name" className="block text-sm font-medium text-text-base mb-1">Full Name</label>
+                <input
+                  id="p-name"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="Your full name"
+                  {...phoneForm.register('name', { required: 'Please enter your full name', minLength: { value: 2, message: 'Please enter your full name' } })}
+                  className={`w-full h-11 px-3 rounded-lg border text-sm text-text-base placeholder:text-text-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                    phoneErrors.name ? 'border-red-400' : 'border-gray-300'
+                  }`}
+                />
+                {phoneErrors.name && <p className="text-sm text-red-500 mt-1">{phoneErrors.name.message}</p>}
+              </div>
+
+              {/* Phone Number */}
+              <div>
+                <label htmlFor="p-phone" className="block text-sm font-medium text-text-base mb-1">Phone Number</label>
+                <div className="flex gap-2">
+                  <select
+                    {...phoneForm.register('countryCode')}
+                    className="h-11 px-2 rounded-lg border border-gray-300 bg-white text-sm text-text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 w-[110px] flex-shrink-0"
+                  >
+                    {COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.flag} {c.code}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    id="p-phone"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="07X XXX XXXX"
+                    {...phoneForm.register('phone', { required: 'Please enter a valid mobile number' })}
+                    className={`flex-1 h-11 px-3 rounded-lg border text-sm text-text-base placeholder:text-text-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                      phoneErrors.phone ? 'border-red-400' : 'border-gray-300'
+                    }`}
+                  />
+                </div>
+                {phoneErrors.phone && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {phoneErrors.phone.message}
+                    {phoneErrors.phone.message?.includes('already exists') && (
+                      <> <Link to="/login" className="text-primary font-semibold underline">Sign in instead →</Link></>
+                    )}
+                  </p>
+                )}
+              </div>
+
+              {/* Password */}
+              <div>
+                <label htmlFor="p-password" className="block text-sm font-medium text-text-base mb-1">Password</label>
+                <div className="relative">
+                  <input
+                    id="p-password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    placeholder="Create a password"
+                    {...phoneForm.register('password', {
+                      required: 'Password must be at least 8 characters and include a number and uppercase letter',
+                      minLength: { value: 8, message: 'Password must be at least 8 characters and include a number and uppercase letter' },
+                    })}
+                    className={`w-full h-11 px-3 pr-10 rounded-lg border text-sm text-text-base placeholder:text-text-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                      phoneErrors.password ? 'border-red-400' : 'border-gray-300'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-base"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {password && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="flex gap-1 flex-1">
+                      {[1, 2, 3, 4].map((seg) => (
+                        <div
+                          key={seg}
+                          className={`h-1.5 flex-1 rounded-full transition-colors ${
+                            seg <= strength.level ? strength.color : 'bg-gray-200'
+                          }`}
+                        />
+                      ))}
                     </div>
+                    <span className={`text-xs font-medium ${LABEL_COLORS[strength.label] || ''}`}>
+                      {strength.label}
+                    </span>
+                  </div>
+                )}
+                {phoneErrors.password && <p className="text-sm text-red-500 mt-1">{phoneErrors.password.message}</p>}
+              </div>
 
-                    <form onSubmit={handleRegister} className="space-y-4">
-                        {error && (
-                            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-                                {error}
-                            </div>
-                        )}
+              {/* Terms */}
+              <label className="flex items-start gap-2.5 text-xs text-text-muted cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...phoneForm.register('terms', { required: 'You must accept the terms to continue' })}
+                  className="mt-0.5 accent-primary flex-shrink-0"
+                />
+                <span>
+                  I agree to FarmWise's{' '}
+                  <a href="/terms" className="text-primary underline">Terms of Service</a>
+                  {' '}and{' '}
+                  <a href="/privacy" className="text-primary underline">Privacy Policy</a>
+                </span>
+              </label>
+              {phoneErrors.terms && <p className="text-sm text-red-500 -mt-2">{phoneErrors.terms.message}</p>}
 
-                        {useEmail ? (
-                            <>
-                                <div className="space-y-2">
-                                    <Label htmlFor="email" className="text-[#1B2B1B] font-medium">Email</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        placeholder="you@example.com"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        required
-                                        className="h-11 bg-white border-gray-200 text-[#1B2B1B] placeholder:text-[#5A6E5A]/60 focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="password" className="text-[#1B2B1B] font-medium">Password</Label>
-                                    <div className="relative">
-                                        <Input
-                                            id="password"
-                                            type={showPassword ? "text" : "password"}
-                                            placeholder="Minimum 6 characters"
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            required
-                                            minLength={6}
-                                            className="h-11 pr-10 bg-white border-gray-200 text-[#1B2B1B] placeholder:text-[#5A6E5A]/60 focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5A6E5A] hover:text-[#1B2B1B]"
-                                        >
-                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                        </button>
-                                    </div>
-                                    {passwordStrength && (
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <div className="flex gap-1 flex-1">
-                                                <div className={`h-1.5 flex-1 rounded-full ${
-                                                    passwordStrength === "weak" ? "bg-red-400" :
-                                                    passwordStrength === "fair" ? "bg-[#F57F17]" : "bg-[#2E7D32]"
-                                                }`} />
-                                                <div className={`h-1.5 flex-1 rounded-full ${
-                                                    passwordStrength === "fair" ? "bg-[#F57F17]" :
-                                                    passwordStrength === "strong" ? "bg-[#2E7D32]" : "bg-gray-200"
-                                                }`} />
-                                                <div className={`h-1.5 flex-1 rounded-full ${
-                                                    passwordStrength === "strong" ? "bg-[#2E7D32]" : "bg-gray-200"
-                                                }`} />
-                                            </div>
-                                            <span className={`text-xs font-medium ${
-                                                passwordStrength === "weak" ? "text-red-500" :
-                                                passwordStrength === "fair" ? "text-[#F57F17]" : "text-[#2E7D32]"
-                                            }`}>
-                                                {passwordStrength === "weak" ? "Weak" :
-                                                 passwordStrength === "fair" ? "Fair" : "Strong"}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </>
-                        ) : (
-                            <div className="space-y-2">
-                                <Label htmlFor="phone" className="text-[#1B2B1B] font-medium">Phone Number</Label>
-                                <Input
-                                    id="phone"
-                                    type="tel"
-                                    placeholder="+256700000000"
-                                    value={phone}
-                                    onChange={(e) => setPhone(e.target.value)}
-                                    required
-                                    className="h-11 bg-white border-gray-200 text-[#1B2B1B] placeholder:text-[#5A6E5A]/60 focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2"
-                                />
-                                <p className="text-xs text-[#5A6E5A]">Include your country code (e.g., +256 for Uganda).</p>
-                            </div>
-                        )}
+              <button
+                type="submit"
+                disabled={submitting || (hasAttempted && !phoneForm.formState.isValid)}
+                className="w-full bg-primary hover:bg-primary-light text-white font-semibold py-3 rounded-lg transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                {submitting && <Loader2 size={16} className="animate-spin" />}
+                {submitting ? 'Creating account…' : 'Send OTP & Create Account'}
+              </button>
+            </form>
+          )}
 
-                        <Button
-                            type="submit"
-                            className="w-full h-11 bg-[#2E7D32] hover:bg-[#256829] text-white font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2"
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <span className="flex items-center gap-2">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Creating account...
-                                </span>
-                            ) : (
-                                "Create Account"
-                            )}
-                        </Button>
-                    </form>
-                </CardContent>
-                <CardFooter className="justify-center pb-8 pt-4">
-                    <p className="text-sm text-[#5A6E5A]">
-                        Already have an account?{" "}
-                        <Link
-                            to="/login"
-                            className="text-[#2E7D32] font-medium hover:text-[#256829] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2 rounded"
-                        >
-                            Sign in
-                        </Link>
-                    </p>
-                </CardFooter>
-            </Card>
+          {/* Sign in link */}
+          <p className="text-sm text-text-muted text-center mt-6">
+            Already have an account?{' '}
+            <Link to="/login" className="text-primary font-semibold hover:underline">Sign in</Link>
+          </p>
         </div>
-    );
+      </div>
+    </div>
+  );
 }

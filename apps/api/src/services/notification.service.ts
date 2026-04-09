@@ -74,4 +74,131 @@ export class NotificationService {
               } : undefined
          });
     }
+
+    static async notifyReviewResponse(userId: string, courseTitle: string, userPhone?: string | null, userEmail?: string | null) {
+         await notificationQueue.add('REVIEW_RESPONSE', {
+              userId,
+              type: 'REVIEW_RESPONSE',
+              title: 'Instructor Responded to Your Review',
+              body: `The instructor for ${courseTitle} has responded to your review.`,
+              smsOptions: userPhone ? {
+                 to: userPhone,
+                 message: `FarmWise: The instructor for ${courseTitle.substring(0, 30)} responded to your review. Check the app to see it.`
+              } : undefined,
+              emailOptions: userEmail ? {
+                 to: userEmail,
+                 subject: 'Instructor Responded to Your Review',
+                 html: `<p>The instructor for <strong>${courseTitle}</strong> has responded to your review.</p>`
+              } : undefined
+         });
+    }
+
+    static async notifyCourseApproved(instructorId: string, courseTitle: string, userPhone?: string | null, userEmail?: string | null) {
+         await notificationQueue.add('COURSE_APPROVED', {
+              userId: instructorId,
+              type: 'COURSE_APPROVED',
+              title: 'Course Approved',
+              body: `Your course ${courseTitle} has been approved and is now live!`,
+              smsOptions: userPhone ? {
+                 to: userPhone,
+                 message: `FarmWise: Great news! Your course ${courseTitle.substring(0, 30)} has been approved and is now live on the marketplace.`
+              } : undefined,
+              emailOptions: userEmail ? {
+                 to: userEmail,
+                 subject: `Course Approved: ${courseTitle}`,
+                 html: `<p>Great news! Your course <strong>${courseTitle}</strong> has been approved and is now live on the marketplace.</p>`
+              } : undefined
+         });
+    }
+
+    static async notifyCourseRejected(instructorId: string, courseTitle: string, userPhone?: string | null, userEmail?: string | null) {
+         await notificationQueue.add('COURSE_REJECTED', {
+              userId: instructorId,
+              type: 'COURSE_REJECTED',
+              title: 'Course Needs Revision',
+              body: `Your course ${courseTitle} needs some revisions before it can go live.`,
+              smsOptions: userPhone ? {
+                 to: userPhone,
+                 message: `FarmWise: Your course ${courseTitle.substring(0, 30)} was returned for revisions. Check your email for details.`
+              } : undefined,
+              emailOptions: userEmail ? {
+                 to: userEmail,
+                 subject: `Course Action Required: ${courseTitle}`,
+                 html: `<p>Your course <strong>${courseTitle}</strong> requires revisions before it can be published. Please log in to your dashboard to review the feedback.</p>`
+              } : undefined
+         });
+    }
+
+    static async notifyPayoutProcessed(instructorId: string, amount: number, userPhone?: string | null, userEmail?: string | null) {
+         await notificationQueue.add('PAYOUT_PROCESSED', {
+              userId: instructorId,
+              type: 'PAYOUT_PROCESSED',
+              title: 'Payout Processed',
+              body: `A payout of UGX ${amount} has been processed to your account.`,
+              smsOptions: userPhone ? {
+                 to: userPhone,
+                 message: `FarmWise: A payout of UGX ${amount} has been submitted to your Stripe account. Allow a few days for processing.`
+              } : undefined,
+              emailOptions: userEmail ? {
+                 to: userEmail,
+                 subject: 'Payout Processed',
+                 html: `<p>A payout of <strong>UGX ${amount}</strong> has been successfully processed to your connected Stripe account.</p>`
+              } : undefined
+         });
+    }
+
+    static async notifyQAAnswer(userId: string, courseTitle: string, userPhone?: string | null, userEmail?: string | null) {
+         await notificationQueue.add('QA_ANSWER', {
+              userId,
+              type: 'QA_ANSWER',
+              title: 'New Q&A Response',
+              body: `Your question in ${courseTitle} has been answered.`,
+              smsOptions: userPhone ? {
+                 to: userPhone,
+                 message: `FarmWise: The instructor for ${courseTitle.substring(0, 30)} answered your question. Check the app to continue learning.`
+              } : undefined,
+              emailOptions: userEmail ? {
+                 to: userEmail,
+                 subject: 'New Answer to Your Question',
+                 html: `<p>Your question in the course <strong>${courseTitle}</strong> has received a response. Open the app to read it.</p>`
+              } : undefined
+         });
+    }
+
+    static async notifyAnnouncement(userId: string, subject: string, message: string, userPhone?: string | null, userEmail?: string | null) {
+         await notificationQueue.add('ANNOUNCEMENT', {
+              userId,
+              type: 'ANNOUNCEMENT',
+              title: subject,
+              body: message,
+              smsOptions: userPhone ? {
+                 to: userPhone,
+                 message: `FarmWise: ${subject.substring(0, 20)} - ${message.substring(0, 100)}...`
+              } : undefined,
+              emailOptions: userEmail ? {
+                 to: userEmail,
+                 subject: subject,
+                 html: `<p>${message}</p>`
+              } : undefined
+         });
+    }
+
+    static async notifyInstructorApplicationReviewed(userId: string, approved: boolean, userPhone?: string | null, userEmail?: string | null) {
+         const status = approved ? 'approved' : 'rejected';
+         await notificationQueue.add('INSTRUCTOR_APPLICATION_REVIEWED', {
+              userId,
+              type: 'INSTRUCTOR_APPLICATION_REVIEWED',
+              title: 'Instructor Application Update',
+              body: `Your application to become a FarmWise instructor has been ${status}.`,
+              smsOptions: userPhone ? {
+                 to: userPhone,
+                 message: `FarmWise: Your instructor application has been ${status}. ${approved ? 'Log in to start building your first course!' : 'Check your email for details.'}`
+              } : undefined,
+              emailOptions: userEmail ? {
+                 to: userEmail,
+                 subject: `Instructor Application ${approved ? 'Approved!' : 'Update'}`,
+                 html: `<p>Your application to become an instructor has been <strong>${status}</strong>.</p>`
+              } : undefined
+         });
+    }
 }

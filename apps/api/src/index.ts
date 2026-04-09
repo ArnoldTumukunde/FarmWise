@@ -1,3 +1,19 @@
+import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
+
+// Walk up from cwd to find .env (handles tsx, ts-node, and direct node)
+function findEnv(): string {
+    let dir = process.cwd();
+    for (let i = 0; i < 5; i++) {
+        const candidate = path.join(dir, '.env');
+        if (fs.existsSync(candidate)) return candidate;
+        dir = path.dirname(dir);
+    }
+    return '.env'; // fallback
+}
+dotenv.config({ path: findEnv() });
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -13,9 +29,12 @@ import communityRoutes from './routes/community.routes';
 import reviewRoutes from './routes/review.routes';
 import adminRoutes from './routes/admin.routes';
 import cartRoutes from './routes/cart.routes';
+import wishlistRoutes from './routes/wishlist.routes';
 import profileRoutes from './routes/profile.routes';
 import statsRoutes from './routes/stats.routes';
 import notificationRoutes from './routes/notification.routes';
+import farmerRoutes from './routes/farmer.routes';
+import pagesRoutes from './routes/pages.routes';
 
 const app = express();
 
@@ -39,9 +58,20 @@ app.use('/api/v1/community', communityRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/cart', cartRoutes);
+app.use('/api/v1/wishlist', wishlistRoutes);
+app.use('/api/v1/enrollments/wishlist', wishlistRoutes);
 app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/stats', statsRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/farmer', farmerRoutes);
+app.use('/api/v1/pages', pagesRoutes);
+
+// Start BullMQ notification worker
+import('./jobs/worker').then(() => {
+    console.log('Notification worker started');
+}).catch(err => {
+    console.warn('Notification worker failed to start (Redis may be unavailable):', err.message);
+});
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });

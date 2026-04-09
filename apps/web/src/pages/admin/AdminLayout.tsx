@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, MessageSquare, LogOut, Menu, X } from 'lucide-react';
+import {
+  LayoutDashboard, Users, BookOpen, MessageSquare, LogOut, Menu, X,
+  Tag, Ticket, RotateCcw, TrendingUp, Megaphone, Shield, Settings,
+  Home, FileText, ClipboardList,
+} from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export function AdminLayout() {
@@ -8,11 +12,51 @@ export function AdminLayout() {
   const { logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const navItems = [
-    { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
-    { name: 'Users & Apps', path: '/admin/users', icon: Users },
-    { name: 'Courses', path: '/admin/courses', icon: BookOpen },
-    { name: 'Reviews', path: '/admin/reviews', icon: MessageSquare },
+  const navGroups = [
+    {
+      label: 'Overview',
+      items: [
+        { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
+      ],
+    },
+    {
+      label: 'Content',
+      items: [
+        { name: 'Courses', path: '/admin/courses', icon: BookOpen },
+        { name: 'Categories', path: '/admin/categories', icon: Tag },
+        { name: 'Pages', path: '/admin/pages', icon: FileText },
+        { name: 'Moderation', path: '/admin/moderation', icon: Shield },
+      ],
+    },
+    {
+      label: 'Users',
+      items: [
+        { name: 'All Users', path: '/admin/users', icon: Users },
+      ],
+    },
+    {
+      label: 'Commerce',
+      items: [
+        { name: 'Coupons', path: '/admin/coupons', icon: Ticket },
+        { name: 'Refunds', path: '/admin/refunds', icon: RotateCcw },
+        { name: 'Revenue', path: '/admin/revenue', icon: TrendingUp },
+      ],
+    },
+    {
+      label: 'Communications',
+      items: [
+        { name: 'Broadcasts', path: '/admin/notifications', icon: Megaphone },
+        { name: 'Reviews', path: '/admin/reviews', icon: MessageSquare },
+      ],
+    },
+    {
+      label: 'System',
+      items: [
+        { name: 'Homepage', path: '/admin/homepage', icon: Home },
+        { name: 'Settings', path: '/admin/settings', icon: Settings },
+        { name: 'Audit Log', path: '/admin/audit-log', icon: ClipboardList },
+      ],
+    },
   ];
 
   const isActive = (path: string) => {
@@ -36,32 +80,47 @@ export function AdminLayout() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
-        <ul className="space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.path);
-            return (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32] ${
-                    active
-                      ? 'bg-[#2E7D32]/10 text-[#2E7D32] border-l-[3px] border-[#F57F17]'
-                      : 'text-[#5A6E5A] hover:text-[#1B2B1B] hover:bg-[#2E7D32]/5'
-                  }`}
-                >
-                  <Icon size={20} />
-                  {item.name}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        {navGroups.map((group) => (
+          <div key={group.label} className="mb-4">
+            <p className="px-4 text-[10px] font-bold uppercase tracking-wider text-[#5A6E5A]/60 mb-1">
+              {group.label}
+            </p>
+            <ul className="space-y-0.5">
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.path);
+                return (
+                  <li key={item.path}>
+                    <Link
+                      to={item.path}
+                      onClick={() => setSidebarOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32] ${
+                        active
+                          ? 'bg-[#2E7D32]/10 text-[#2E7D32] border-l-[3px] border-[#F57F17]'
+                          : 'text-[#5A6E5A] hover:text-[#1B2B1B] hover:bg-[#2E7D32]/5'
+                      }`}
+                    >
+                      <Icon size={18} />
+                      {item.name}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
 
-      {/* Logout */}
-      <div className="p-4 border-t border-[#2E7D32]/10">
+      {/* Browse as student + Logout */}
+      <div className="p-4 border-t border-[#2E7D32]/10 space-y-1">
+        <Link
+          to="/"
+          onClick={() => setSidebarOpen(false)}
+          className="flex items-center gap-3 px-4 py-2.5 w-full text-sm font-medium text-[#5A6E5A] hover:text-[#2E7D32] hover:bg-[#2E7D32]/5 rounded-lg transition-colors"
+        >
+          <BookOpen size={18} />
+          Browse as student
+        </Link>
         <button
           onClick={() => { logout(); setSidebarOpen(false); }}
           className="flex items-center gap-3 px-4 py-2.5 w-full text-sm font-medium text-[#5A6E5A] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"

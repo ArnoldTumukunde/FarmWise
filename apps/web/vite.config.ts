@@ -13,7 +13,8 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'service-worker.ts',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
       },
       manifest: {
         name: 'FarmWise Learning',

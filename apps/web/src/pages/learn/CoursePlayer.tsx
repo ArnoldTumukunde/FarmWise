@@ -252,43 +252,90 @@ export function CoursePlayer() {
       <div className="flex flex-1 relative overflow-hidden">
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col overflow-y-auto">
-          {/* Video Area */}
+          {/* Content Area — changes based on lecture type */}
           {activeLecture ? (
-            <div className="w-full bg-[#1A2E1A]">
-              <div className="max-w-5xl mx-auto">
-                <div className="aspect-video">
-                  <HlsPlayer
-                    lectureId={activeLecture.id}
-                    onProgress={(seconds) => {
-                      watchedSecondsRef.current = seconds;
-                    }}
-                    onEnded={async () => {
-                      const enrollmentId = data?.enrollmentId;
-                      if (!enrollmentId) return;
-                      try {
-                        await syncProgressToServer(activeLecture.id, enrollmentId, true);
-                        // Update local completed set
-                        setData((prev: any) => {
-                          if (!prev) return prev;
-                          const ids = new Set(prev.progress?.completedLectureIds || []);
-                          ids.add(activeLecture.id);
-                          return {
-                            ...prev,
-                            progress: {
-                              ...prev.progress,
-                              completedLectureIds: Array.from(ids),
-                            },
-                          };
-                        });
-                        toast.success('Lecture completed!');
-                      } catch (e) {
-                        console.error('Failed to mark lecture completed', e);
-                      }
-                    }}
-                  />
+            activeLecture.type === 'VIDEO' ? (
+              <div className="w-full bg-[#1A2E1A]">
+                <div className="max-w-5xl mx-auto">
+                  <div className="aspect-video">
+                    <HlsPlayer
+                      lectureId={activeLecture.id}
+                      onProgress={(seconds) => {
+                        watchedSecondsRef.current = seconds;
+                      }}
+                      onEnded={async () => {
+                        const enrollmentId = data?.enrollmentId;
+                        if (!enrollmentId) return;
+                        try {
+                          await syncProgressToServer(activeLecture.id, enrollmentId, true);
+                          setData((prev: any) => {
+                            if (!prev) return prev;
+                            const ids = new Set(prev.progress?.completedLectureIds || []);
+                            ids.add(activeLecture.id);
+                            return {
+                              ...prev,
+                              progress: {
+                                ...prev.progress,
+                                completedLectureIds: Array.from(ids),
+                              },
+                            };
+                          });
+                          toast.success('Lecture completed!');
+                        } catch (e) {
+                          console.error('Failed to mark lecture completed', e);
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : activeLecture.type === 'ARTICLE' ? (
+              <ArticleContent
+                lecture={activeLecture}
+                enrollmentId={data?.enrollmentId}
+                onComplete={async () => {
+                  if (!data?.enrollmentId) return;
+                  try {
+                    await syncProgressToServer(activeLecture.id, data.enrollmentId, true);
+                    setData((prev: any) => {
+                      if (!prev) return prev;
+                      const ids = new Set(prev.progress?.completedLectureIds || []);
+                      ids.add(activeLecture.id);
+                      return { ...prev, progress: { ...prev.progress, completedLectureIds: Array.from(ids) } };
+                    });
+                    toast.success('Article completed!');
+                  } catch (e) {
+                    console.error('Failed to mark article completed', e);
+                  }
+                }}
+                isCompleted={completedLectures.has(activeLecture.id)}
+              />
+            ) : activeLecture.type === 'QUIZ' ? (
+              <QuizContent
+                lecture={activeLecture}
+                enrollmentId={data?.enrollmentId}
+                onComplete={async () => {
+                  if (!data?.enrollmentId) return;
+                  try {
+                    await syncProgressToServer(activeLecture.id, data.enrollmentId, true);
+                    setData((prev: any) => {
+                      if (!prev) return prev;
+                      const ids = new Set(prev.progress?.completedLectureIds || []);
+                      ids.add(activeLecture.id);
+                      return { ...prev, progress: { ...prev.progress, completedLectureIds: Array.from(ids) } };
+                    });
+                    toast.success('Quiz completed!');
+                  } catch (e) {
+                    console.error('Failed to mark quiz completed', e);
+                  }
+                }}
+                isCompleted={completedLectures.has(activeLecture.id)}
+              />
+            ) : (
+              <div className="w-full bg-[#1A2E1A] aspect-video flex items-center justify-center text-white/60">
+                <p className="text-sm">Unsupported lecture type</p>
+              </div>
+            )
           ) : (
             <div className="w-full aspect-video bg-[#1A2E1A] flex items-center justify-center text-white/60">
               <div className="text-center">
@@ -543,6 +590,216 @@ export function CoursePlayer() {
             })}
           </div>
         </aside>
+      </div>
+    </div>
+  );
+}
+
+/* ───── Article Content ───── */
+function ArticleContent({
+  lecture,
+  onComplete,
+  isCompleted,
+}: {
+  lecture: any;
+  enrollmentId?: string;
+  onComplete: () => void;
+  isCompleted: boolean;
+}) {
+  return (
+    <div className="w-full bg-white">
+      <div className="max-w-3xl mx-auto px-6 py-8">
+        <div className="flex items-center gap-2 mb-4">
+          <FileText size={20} className="text-[#2E7D32]" />
+          <span className="text-sm font-medium text-[#5A6E5A]">Article</span>
+        </div>
+        <div
+          className="prose prose-sm max-w-none text-[#1B2B1B] leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: lecture.content || '<p class="text-[#5A6E5A] italic">No content available for this article.</p>' }}
+        />
+        {!isCompleted && (
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <button
+              onClick={onComplete}
+              className="px-6 py-2.5 bg-[#2E7D32] text-white font-semibold rounded-lg hover:bg-[#256829] transition-colors"
+            >
+              Mark as Complete
+            </button>
+          </div>
+        )}
+        {isCompleted && (
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <div className="flex items-center gap-2 text-[#4CAF50]">
+              <CheckCircle2 size={18} />
+              <span className="text-sm font-medium">Completed</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ───── Quiz Content ───── */
+function QuizContent({
+  lecture,
+  onComplete,
+  isCompleted,
+}: {
+  lecture: any;
+  enrollmentId?: string;
+  onComplete: () => void;
+  isCompleted: boolean;
+}) {
+  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [score, setScore] = useState<number | null>(null);
+
+  const quizData = lecture.quizData as any;
+  // quizData can be either a direct array of questions or an object with a questions property
+  const questions: Array<{
+    question: string;
+    options: string[];
+    correctIndex: number;
+    explanation?: string;
+  }> = Array.isArray(quizData)
+    ? quizData
+    : Array.isArray(quizData?.questions)
+      ? quizData.questions
+      : [];
+
+  if (questions.length === 0) {
+    return (
+      <div className="w-full bg-white">
+        <div className="max-w-3xl mx-auto px-6 py-8">
+          <div className="flex items-center gap-2 mb-4">
+            <HelpCircle size={20} className="text-[#2E7D32]" />
+            <span className="text-sm font-medium text-[#5A6E5A]">Quiz</span>
+          </div>
+          <p className="text-[#5A6E5A] italic">No quiz questions available yet.</p>
+          {!isCompleted && (
+            <button
+              onClick={onComplete}
+              className="mt-4 px-6 py-2.5 bg-[#2E7D32] text-white font-semibold rounded-lg hover:bg-[#256829] transition-colors"
+            >
+              Mark as Complete
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const handleSubmit = () => {
+    let correct = 0;
+    questions.forEach((q, i) => {
+      if (answers[i] === q.correctIndex) correct++;
+    });
+    setScore(correct);
+    setSubmitted(true);
+    if (correct >= Math.ceil(questions.length * 0.6)) {
+      onComplete();
+    }
+  };
+
+  const handleRetry = () => {
+    setAnswers({});
+    setSubmitted(false);
+    setScore(null);
+  };
+
+  return (
+    <div className="w-full bg-white">
+      <div className="max-w-3xl mx-auto px-6 py-8">
+        <div className="flex items-center gap-2 mb-6">
+          <HelpCircle size={20} className="text-[#2E7D32]" />
+          <span className="text-sm font-medium text-[#5A6E5A]">
+            Quiz · {questions.length} question{questions.length !== 1 ? 's' : ''}
+          </span>
+          {isCompleted && (
+            <span className="ml-auto flex items-center gap-1 text-[#4CAF50] text-sm font-medium">
+              <CheckCircle2 size={16} /> Completed
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-6">
+          {questions.map((q, qi) => {
+            const userAnswer = answers[qi];
+
+            return (
+              <div key={qi} className="border border-gray-200 rounded-xl p-5">
+                <p className="text-sm font-semibold text-[#1B2B1B] mb-3">
+                  {qi + 1}. {q.question}
+                </p>
+                <div className="space-y-2">
+                  {q.options.map((opt, oi) => {
+                    const isSelected = userAnswer === oi;
+                    const showCorrect = submitted && oi === q.correctIndex;
+                    const showWrong = submitted && isSelected && oi !== q.correctIndex;
+
+                    return (
+                      <button
+                        key={oi}
+                        onClick={() => {
+                          if (submitted) return;
+                          setAnswers(prev => ({ ...prev, [qi]: oi }));
+                        }}
+                        disabled={submitted}
+                        className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-lg border text-sm transition-colors
+                          ${showCorrect ? 'border-[#4CAF50] bg-[#4CAF50]/10 text-[#2E7D32]'
+                          : showWrong ? 'border-red-400 bg-red-50 text-red-700'
+                          : isSelected ? 'border-[#2E7D32] bg-[#2E7D32]/5 text-[#1B2B1B]'
+                          : 'border-gray-200 hover:border-gray-300 text-[#1B2B1B]'}`}
+                      >
+                        <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 text-xs font-bold
+                          ${showCorrect ? 'border-[#4CAF50] bg-[#4CAF50] text-white'
+                          : showWrong ? 'border-red-400 bg-red-400 text-white'
+                          : isSelected ? 'border-[#2E7D32] bg-[#2E7D32] text-white'
+                          : 'border-gray-300'}`}>
+                          {String.fromCharCode(65 + oi)}
+                        </span>
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+                {submitted && q.explanation && (
+                  <p className="text-xs text-[#5A6E5A] mt-3 bg-gray-50 rounded-lg p-3">
+                    {q.explanation}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          {!submitted ? (
+            <button
+              onClick={handleSubmit}
+              disabled={Object.keys(answers).length < questions.length}
+              className="px-6 py-2.5 bg-[#2E7D32] text-white font-semibold rounded-lg hover:bg-[#256829] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Submit Answers
+            </button>
+          ) : (
+            <div className="flex items-center gap-4">
+              <div className={`text-lg font-bold ${score! >= Math.ceil(questions.length * 0.6) ? 'text-[#4CAF50]' : 'text-red-500'}`}>
+                {score}/{questions.length} correct
+                {score! >= Math.ceil(questions.length * 0.6) ? ' — Passed!' : ' — Try again'}
+              </div>
+              {score! < Math.ceil(questions.length * 0.6) && (
+                <button
+                  onClick={handleRetry}
+                  className="px-5 py-2 border border-[#2E7D32] text-[#2E7D32] font-semibold rounded-lg hover:bg-[#2E7D32]/5 transition-colors text-sm"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

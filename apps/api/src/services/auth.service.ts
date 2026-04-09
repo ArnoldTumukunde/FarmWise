@@ -14,15 +14,24 @@ const AT = AfricasTalking({
 const sms = AT.SMS;
 
 export class AuthService {
-    static async registerPhone(phone: string) {
+    static async registerPhone(phone: string, passwordHash?: string, name?: string) {
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
         const tokenExp = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
-        await prisma.user.upsert({
+        const user = await prisma.user.upsert({
             where: { phone },
-            update: { verifyToken: otp, verifyTokenExp: tokenExp },
-            create: { phone, role: 'FARMER', verifyToken: otp, verifyTokenExp: tokenExp }
+            update: { verifyToken: otp, verifyTokenExp: tokenExp, ...(passwordHash && { passwordHash }) },
+            create: { phone, role: 'FARMER', verifyToken: otp, verifyTokenExp: tokenExp, ...(passwordHash && { passwordHash }) }
         });
+
+        // Create profile with the user's name if provided
+        if (name) {
+            await prisma.profile.upsert({
+                where: { userId: user.id },
+                update: {},
+                create: { userId: user.id, displayName: name },
+            });
+        }
 
         try {
             await sms.send({
@@ -51,16 +60,40 @@ export class AuthService {
         return this.generateTokens(updatedUser.id, updatedUser.role);
     }
 
-    static async registerEmail(email: string, passwordHash: string) {
+    static async registerEmail(email: string, passwordHash: string, name?: string) {
         const token = crypto.randomBytes(32).toString('hex');
         const tokenExp = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-        const user = await prisma.user.create({
-            data: { email, passwordHash, role: 'FARMER', verifyToken: token, verifyTokenExp: tokenExp }
-        });
+        // Allow re-registration if previous account was never verified
+        const existing = await prisma.user.findUnique({ where: { email } });
+        if (existing && existing.isVerified) {
+            throw new Error('An account with this email already exists');
+        }
 
-        // Send verification email via Resend
-        await emailService.sendVerificationEmail(email, token);
+        const user = existing
+            ? await prisma.user.update({
+                where: { id: existing.id },
+                data: { passwordHash, verifyToken: token, verifyTokenExp: tokenExp },
+              })
+            : await prisma.user.create({
+                data: { email, passwordHash, role: 'FARMER', verifyToken: token, verifyTokenExp: tokenExp },
+              });
+
+        // Create or update profile with the user's name if provided
+        if (name) {
+            await prisma.profile.upsert({
+                where: { userId: user.id },
+                update: { displayName: name },
+                create: { userId: user.id, displayName: name },
+            });
+        }
+
+        // Send verification email via Resend (non-blocking — don't fail registration if email fails)
+        try {
+            await emailService.sendVerificationEmail(email, token);
+        } catch (err) {
+            console.error('Failed to send verification email:', err);
+        }
 
         return { success: true, message: "Verification email sent", userId: user.id };
     }
@@ -83,6 +116,17 @@ export class AuthService {
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user || !user.passwordHash) throw new Error("Invalid credentials");
         if (!user.isVerified) throw new Error("Email not verified");
+
+        const valid = await bcrypt.compare(passwordPlain, user.passwordHash);
+        if (!valid) throw new Error("Invalid credentials");
+
+        return this.generateTokens(user.id, user.role);
+    }
+
+    static async loginPhone(phone: string, passwordPlain: string) {
+        const user = await prisma.user.findUnique({ where: { phone } });
+        if (!user || !user.passwordHash) throw new Error("Invalid credentials");
+        if (!user.isVerified) throw new Error("Phone not verified");
 
         const valid = await bcrypt.compare(passwordPlain, user.passwordHash);
         if (!valid) throw new Error("Invalid credentials");
@@ -117,7 +161,37 @@ export class AuthService {
         });
 
         // Send password reset email via Resend
-        await emailService.sendPasswordResetEmail(email, token);
+        try {
+            await emailService.sendPasswordResetEmail(email, token);
+        } catch (err) {
+            console.error('Failed to send password reset email:', err);
+            throw new Error('Failed to send reset email');
+        }
+        return { success: true };
+    }
+
+    static async requestPhonePasswordReset(phone: string) {
+        const user = await prisma.user.findUnique({ where: { phone } });
+        if (!user) return { success: true }; // Prevent enumeration
+
+        const otp = Math.floor(1000 + Math.random() * 9000).toString();
+        const tokenExp = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { resetToken: otp, resetTokenExp: tokenExp }
+        });
+
+        try {
+            await sms.send({
+                to: [phone],
+                message: `Your FarmWise password reset code is ${otp}. Expires in 15 minutes.`
+            });
+        } catch (error) {
+            console.error("SMS Error:", error);
+            throw new Error("Failed to send SMS");
+        }
+
         return { success: true };
     }
 
@@ -135,6 +209,65 @@ export class AuthService {
                 resetTokenExp: null
             }
         });
+
+        return { success: true };
+    }
+
+    static async resetPasswordByPhone(phone: string, otp: string, newPasswordHash: string) {
+        const user = await prisma.user.findUnique({ where: { phone } });
+        if (!user || user.resetToken !== otp || !user.resetTokenExp || user.resetTokenExp < new Date()) {
+            throw new Error("Invalid or expired OTP");
+        }
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                passwordHash: newPasswordHash,
+                resetToken: null,
+                resetTokenExp: null
+            }
+        });
+
+        return { success: true };
+    }
+
+    static async resendVerificationEmail(email: string) {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user || user.isVerified) return { success: true }; // Prevent enumeration
+
+        const token = crypto.randomBytes(32).toString('hex');
+        const tokenExp = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { verifyToken: token, verifyTokenExp: tokenExp }
+        });
+
+        await emailService.sendVerificationEmail(email, token);
+        return { success: true };
+    }
+
+    static async resendVerificationOtp(phone: string) {
+        const user = await prisma.user.findUnique({ where: { phone } });
+        if (!user || user.isVerified) return { success: true }; // Prevent enumeration
+
+        const otp = Math.floor(1000 + Math.random() * 9000).toString();
+        const tokenExp = new Date(Date.now() + 15 * 60 * 1000);
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { verifyToken: otp, verifyTokenExp: tokenExp }
+        });
+
+        try {
+            await sms.send({
+                to: [phone],
+                message: `Your FarmWise verification code is ${otp}. Expires in 15 minutes.`
+            });
+        } catch (error) {
+            console.error("SMS Error:", error);
+            throw new Error("Failed to send SMS");
+        }
 
         return { success: true };
     }

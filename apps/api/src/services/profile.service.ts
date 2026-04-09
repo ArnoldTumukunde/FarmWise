@@ -9,14 +9,21 @@ export class ProfileService {
       where: { userId },
     });
 
+    // Fetch user's email and phone so the frontend can display them
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, phone: true },
+    });
+
     if (!profile) {
       // Auto-create a minimal profile if none exists
-      return prisma.profile.create({
+      const created = await prisma.profile.create({
         data: { userId, displayName: 'User' },
       });
+      return { ...created, email: user?.email ?? null, phone: user?.phone ?? null };
     }
 
-    return profile;
+    return { ...profile, email: user?.email ?? null, phone: user?.phone ?? null };
   }
 
   /**
@@ -31,6 +38,7 @@ export class ProfileService {
       farmLocation?: string;
       cropSpecialities?: string[];
       website?: string;
+      avatarPublicId?: string;
     }
   ) {
     return prisma.profile.upsert({
@@ -42,6 +50,7 @@ export class ProfileService {
         ...(data.farmLocation !== undefined && { farmLocation: data.farmLocation }),
         ...(data.cropSpecialities !== undefined && { cropSpecialities: data.cropSpecialities }),
         ...(data.website !== undefined && { website: data.website }),
+        ...(data.avatarPublicId !== undefined && { avatarPublicId: data.avatarPublicId }),
       },
       create: {
         userId,
@@ -51,6 +60,7 @@ export class ProfileService {
         farmLocation: data.farmLocation,
         cropSpecialities: data.cropSpecialities || [],
         website: data.website,
+        avatarPublicId: data.avatarPublicId,
       },
     });
   }

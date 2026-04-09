@@ -87,7 +87,7 @@ export default function CourseAnalytics() {
     },
     {
       label: 'Average Rating',
-      value: data.averageRating > 0 ? data.averageRating.toFixed(1) : '--',
+      value: Number(data.averageRating) > 0 ? Number(data.averageRating).toFixed(1) : '--',
       icon: Star,
       color: 'text-[#F57F17]',
       bg: 'bg-amber-50',

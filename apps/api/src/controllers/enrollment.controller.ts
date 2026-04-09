@@ -1,6 +1,21 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { EnrollmentService } from '../services/enrollment.service';
+import { prisma } from '@farmwise/db';
+
+export const enrollFree = async (req: AuthRequest, res: Response) => {
+  try {
+    const { courseId } = req.params;
+    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { price: true } });
+    if (!course) return res.status(404).json({ error: 'Course not found' });
+    if (Number(course.price) > 0) return res.status(400).json({ error: 'This course is not free' });
+
+    const enrollment = await EnrollmentService.enrollFreeCourse(req.user!.id, courseId);
+    res.json({ success: true, enrollment });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 export const getMyEnrollments = async (req: AuthRequest, res: Response) => {
   try {

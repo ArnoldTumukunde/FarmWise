@@ -388,11 +388,98 @@ export class InstructorService {
       },
     });
 
+    // This month vs last month revenue
+    const now = new Date();
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const thisMonthRev = await prisma.enrollment.aggregate({
+      where: {
+        course: { instructorId },
+        status: 'ACTIVE',
+        createdAt: { gte: startOfThisMonth },
+      },
+      _sum: { paidAmount: true },
+    });
+
+    const lastMonthRev = await prisma.enrollment.aggregate({
+      where: {
+        course: { instructorId },
+        status: 'ACTIVE',
+        createdAt: { gte: startOfLastMonth, lt: startOfThisMonth },
+      },
+      _sum: { paidAmount: true },
+    });
+
+    // Recent enrollments for activity feed
+    const recentEnrollmentsRaw = await prisma.enrollment.findMany({
+      where: { course: { instructorId }, status: 'ACTIVE' },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      include: {
+        user: { include: { profile: true } },
+        course: { select: { title: true } },
+      },
+    });
+
+    const recentEnrollments = recentEnrollmentsRaw.map((e) => {
+      const name = e.user.profile?.displayName || (e.user.email ? e.user.email.split('@')[0] : e.user.phone) || 'Student';
+      const parts = name.split(' ');
+      const short = parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : parts[0];
+      const ms = Date.now() - new Date(e.createdAt).getTime();
+      const mins = Math.floor(ms / 60000);
+      let timeAgo = 'just now';
+      if (mins >= 1440) timeAgo = `${Math.floor(mins / 1440)} day${Math.floor(mins / 1440) > 1 ? 's' : ''} ago`;
+      else if (mins >= 60) timeAgo = `${Math.floor(mins / 60)} hour${Math.floor(mins / 60) > 1 ? 's' : ''} ago`;
+      else if (mins >= 1) timeAgo = `${mins} min${mins > 1 ? 's' : ''} ago`;
+      return { studentName: short, courseTitle: e.course.title, timeAgo };
+    });
+
+    // Unanswered Q&A count
+    const instructorLectures = await prisma.lecture.findMany({
+      where: { section: { course: { instructorId } } },
+      select: { id: true }
+    });
+    const lectureIds = instructorLectures.map(l => l.id);
+
+    const unansweredQACount = await prisma.question.count({
+      where: {
+        lectureId: { in: lectureIds },
+        answers: { none: {} },
+      },
+    });
+
+    // Monthly revenue breakdown (last 12 months)
+    const revenueByMonth: { month: string; total: number; net: number }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const monthRev = await prisma.enrollment.aggregate({
+        where: {
+          course: { instructorId },
+          status: 'ACTIVE',
+          createdAt: { gte: start, lt: end },
+        },
+        _sum: { paidAmount: true },
+      });
+      const total = Number(monthRev._sum.paidAmount ?? 0);
+      revenueByMonth.push({
+        month: start.toLocaleString('en', { month: 'short' }),
+        total,
+        net: Math.round(total * 0.7), // 70% after platform fee
+      });
+    }
+
     return {
       totalEnrollments,
       totalRevenue: Number(totalRevenue),
       averageRating: Number(averageRating),
       totalDownloads,
+      thisMonthRevenue: Number(thisMonthRev._sum.paidAmount ?? 0),
+      lastMonthRevenue: Number(lastMonthRev._sum.paidAmount ?? 0),
+      recentEnrollments,
+      unansweredQACount,
+      revenueByMonth,
     };
   }
 

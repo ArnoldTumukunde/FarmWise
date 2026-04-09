@@ -1,4 +1,6 @@
 import { Star, MapPin } from 'lucide-react';
+import { useInView } from '@/hooks/useInView';
+import { anim } from '@/lib/animations';
 
 const testimonials = [
   {
@@ -28,8 +30,10 @@ const testimonials = [
 ];
 
 export function Testimonials() {
+  const { ref, isInView } = useInView();
+
   return (
-    <section className="bg-[#FAFAF5]">
+    <section ref={ref} className="bg-[#FAFAF5]">
       <div className="max-w-7xl mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-[#1B2B1B]">
@@ -49,12 +53,16 @@ export function Testimonials() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {testimonials.map((t) => (
+          {testimonials.map((t, i) => (
             <div
               key={t.name}
               className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+              style={anim.rainDrop(isInView, i * 120)}
             >
-              <span className="text-6xl text-[#F57F17] font-serif leading-none select-none">
+              <span
+                className="text-6xl text-[#F57F17] font-serif leading-none select-none inline-block"
+                style={anim.leafSway(isInView)}
+              >
                 &ldquo;
               </span>
               <p className="text-base text-[#1B2B1B] italic mt-2">

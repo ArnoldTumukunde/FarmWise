@@ -1,61 +1,140 @@
-import { useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState, useEffect, useRef } from 'react';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { fetchApi } from '@/lib/api';
+import { useCartStore } from '@/store/useCartStore';
+import { CheckCircle, Loader2 } from 'lucide-react';
 
 export default function CheckoutSuccess() {
   const [searchParams] = useSearchParams();
-  const slug = searchParams.get("slug");
-  const courseId = searchParams.get("courseId");
+  const navigate = useNavigate();
+  const cart = useCartStore();
+  const sessionId = searchParams.get('session_id');
+  const slug = searchParams.get('slug');
+  const courseId = searchParams.get('courseId');
+  const enrollmentId = searchParams.get('enrollmentId');
 
-  // Clear the purchased course from the cart
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [courseName, setCourseName] = useState('');
+  const [courseSlug, setCourseSlug] = useState(slug || '');
+  const [showCheck, setShowCheck] = useState(false);
+  const confettiFired = useRef(false);
+
   useEffect(() => {
-    if (!courseId) return;
-    try {
-      const saved = localStorage.getItem('farmwise-cart');
-      if (saved) {
-        const items = JSON.parse(saved);
-        const remaining = items.filter((item: any) => item.id !== courseId);
-        localStorage.setItem('farmwise-cart', JSON.stringify(remaining));
+    async function verify() {
+      try {
+        if (sessionId) {
+          // Verify via Stripe session
+          const res = await fetchApi(`/payments/verify?sessionId=${sessionId}`);
+          if (res.course) {
+            setCourseName(res.course.title || '');
+            setCourseSlug(res.course.slug || slug || '');
+          }
+        } else if (enrollmentId) {
+          const res = await fetchApi(`/enrollments/${enrollmentId}`);
+          if (res.enrollment?.course) {
+            setCourseName(res.enrollment.course.title || '');
+            setCourseSlug(res.enrollment.course.slug || '');
+          }
+        }
+        // Refresh cart
+        cart.fetchCart();
+      } catch {
+        // Still show success — payment was likely successful
+      } finally {
+        setLoading(false);
+        setTimeout(() => setShowCheck(true), 100);
       }
-    } catch {
-      // Ignore malformed cart data
     }
-  }, [courseId]);
+    verify();
+  }, []);
 
-  // Use slug if available, fall back to courseId for the learn link
-  const learnPath = slug ? `/learn/${slug}` : courseId ? `/learn/${courseId}` : '/my-library';
-  const coursePath = slug ? `/course/${slug}` : '/courses';
+  // Confetti effect
+  useEffect(() => {
+    if (!loading && !confettiFired.current) {
+      confettiFired.current = true;
+      setTimeout(async () => {
+        try {
+          const confetti = (await import('canvas-confetti')).default;
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            colors: ['#2E7D32', '#F57F17', '#4CAF50'],
+          });
+        } catch {
+          // Confetti is optional
+        }
+      }, 500);
+    }
+  }, [loading]);
+
+  const learnPath = courseSlug ? `/learn/${courseSlug}` : courseId ? `/learn/${courseId}` : '/my-learning';
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 size={40} className="text-primary animate-spin mx-auto" />
+          <p className="text-text-muted">Verifying your purchase...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-md">
+          <p className="text-red-500 font-medium">{error}</p>
+          <p className="text-sm text-text-muted">
+            If you were charged, please contact support.
+          </p>
+          <Link to="/my-learning" className="text-primary font-semibold hover:underline">
+            Go to My Learning
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF5] flex items-center justify-center p-4 font-[Inter]">
-      <Card className="max-w-md w-full shadow-lg border-gray-200">
-        <CardContent className="p-8 text-center space-y-6">
-          <div className="w-16 h-16 bg-[#2E7D32]/10 text-[#2E7D32] rounded-full flex items-center justify-center mx-auto text-3xl font-bold">
-            &#10003;
-          </div>
-          <h2 className="text-2xl font-bold text-[#1B2B1B]">Payment Successful!</h2>
-          <p className="text-[#5A6E5A]">
-            Thank you for your purchase. Your receipt has been sent to your email.
-          </p>
+    <div className="min-h-[60vh] flex items-center justify-center p-4">
+      <div className="text-center max-w-md w-full space-y-6">
+        {/* Animated checkmark */}
+        <div
+          className={`mx-auto w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center transition-transform duration-400 ${
+            showCheck ? 'scale-100' : 'scale-0'
+          }`}
+        >
+          <CheckCircle size={44} className="text-primary" />
+        </div>
 
-          <div className="pt-4 space-y-3">
-            <Button
-              className="w-full h-12 text-lg bg-[#2E7D32] hover:bg-[#2E7D32]/90 focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2"
-              asChild
-            >
-              <Link to={learnPath}>Start Learning Now</Link>
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2"
-              asChild
-            >
-              <Link to="/courses">Browse More Courses</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        <h1 className="text-3xl font-bold text-text-base">Payment successful!</h1>
+        <p className="text-lg text-text-muted">
+          {courseName
+            ? `You're enrolled in "${courseName}"`
+            : "You're enrolled! Start learning now."}
+        </p>
+
+        <p className="text-sm text-text-muted">
+          You'll receive a confirmation email shortly.
+        </p>
+
+        <div className="pt-4 space-y-3">
+          <Link
+            to={learnPath}
+            className="block w-full bg-primary hover:bg-primary-light text-white font-semibold py-3.5 rounded-lg text-base transition-colors text-center"
+          >
+            Start Learning
+          </Link>
+          <Link
+            to="/my-learning"
+            className="block w-full border-2 border-gray-200 text-text-base hover:border-primary hover:text-primary font-semibold py-3 rounded-lg text-sm transition-colors text-center"
+          >
+            My Learning
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

@@ -34,10 +34,39 @@ export const listCategories = async (req: Request, res: Response) => {
     }
 };
 
+export const getRelatedCourses = async (req: Request, res: Response) => {
+    try {
+        const { idOrSlug } = req.params;
+        const courses = await CourseService.getRelatedCourses(idOrSlug);
+        res.json({ courses });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 /**
  * Public endpoint: get a signed video URL for a preview lecture.
  * No authentication required — only works for lectures marked as isPreview.
  */
+export const getTrendingCourses = async (req: Request, res: Response) => {
+    try {
+        const limit = parseInt(req.query.limit as string) || 8;
+        const courses = await CourseService.getTrendingCourses(limit);
+        res.json({ courses });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getFeaturedCollection = async (req: Request, res: Response) => {
+    try {
+        const collection = await CourseService.getFeaturedCollection();
+        res.json(collection);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 export const getPreviewUrl = async (req: Request, res: Response) => {
     try {
         const { lectureId } = req.params;

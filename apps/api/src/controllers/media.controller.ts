@@ -12,8 +12,9 @@ export const getUploadSignature = async (req: AuthRequest, res: Response) => {
 
     const resourceType = ((req.query.type as string) || req.body?.type || 'image') as 'image' | 'video';
 
-    // Ensure instructor access
-    if (req.user!.role !== 'INSTRUCTOR' && req.user!.role !== 'ADMIN') {
+    // Avatar uploads are open to all authenticated users; course media needs instructor/admin
+    const openFolders = ['avatars'];
+    if (!openFolders.includes(folder) && req.user!.role !== 'INSTRUCTOR' && req.user!.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Instructor access required' });
     }
 

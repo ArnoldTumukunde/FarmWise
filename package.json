@@ -10,5 +10,8 @@
     "dev": "npm run dev --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"
+  },
+  "dependencies": {
+    "react-is": "^19.2.4"
   }
 }

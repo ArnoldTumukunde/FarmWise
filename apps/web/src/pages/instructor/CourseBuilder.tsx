@@ -41,6 +41,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { RichTextEditor } from '@/components/ui/RichTextEditor';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -203,14 +204,12 @@ const ArticleEditor = ({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-[#5A6E5A]">Article Content</span>
-        <span className="text-xs text-gray-400">Markdown supported</span>
+        <span className="text-xs text-gray-400">Rich text · images · YouTube embeds</span>
       </div>
-      <textarea
-        value={content}
-        onChange={e => setContent(e.target.value)}
-        rows={8}
-        placeholder="Write your article content here... Markdown is supported."
-        className="w-full border border-gray-200 rounded-lg p-3 text-sm text-[#1B2B1B] bg-white placeholder:text-[#5A6E5A]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2 resize-y"
+      <RichTextEditor
+        content={content}
+        onChange={setContent}
+        placeholder="Write your article content here. Use the toolbar to add images, YouTube videos, quotes, and more."
       />
       <div className="flex justify-end">
         <Button

@@ -17,7 +17,7 @@ router.get('/', requireAuth, async (req: AuthRequest, res: Response) => {
 // PUT /profile - update current user's profile
 router.put('/', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const { displayName, headline, bio, farmLocation, cropSpecialities, website } = req.body;
+    const { displayName, headline, bio, farmLocation, cropSpecialities, website, avatarPublicId } = req.body;
     const profile = await ProfileService.updateMyProfile(req.user!.id, {
       displayName,
       headline,
@@ -25,6 +25,7 @@ router.put('/', requireAuth, async (req: AuthRequest, res: Response) => {
       farmLocation,
       cropSpecialities,
       website,
+      avatarPublicId,
     });
     res.json({ profile });
   } catch (error: any) {

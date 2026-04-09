@@ -11,6 +11,21 @@ import { TeachCTA } from '@/components/home/TeachCTA';
 import { FAQ } from '@/components/home/FAQ';
 import { HomeFooter } from '@/components/home/HomeFooter';
 
+/* ── Crop-row divider between major sections ── */
+function CropRowDivider() {
+  return (
+    <div className="w-full overflow-hidden h-6 relative" aria-hidden="true">
+      {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
+        <div
+          key={i}
+          className="absolute left-0 right-0 h-px bg-primary/8"
+          style={{ top: `${(i / 7) * 100}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function HomePage() {
   const [stats, setStats] = useState({ farmerCount: 0, courseCount: 0, instructorCount: 0 });
 
@@ -25,10 +40,15 @@ export default function HomePage() {
       <HeroBanner />
       <CategoryCarousel />
       <StatsStrip stats={stats} />
+      <CropRowDivider />
       <FeaturedCourses />
+      <CropRowDivider />
       <HowItWorks />
+      <CropRowDivider />
       <FeaturedInstructors />
+      <CropRowDivider />
       <Testimonials />
+      <CropRowDivider />
       <TeachCTA />
       <FAQ />
       <HomeFooter />
