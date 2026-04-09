@@ -113,7 +113,7 @@ export default function SearchPage() {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('relevant');
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load categories once
   useEffect(() => {

@@ -3,7 +3,6 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { fetchApi } from '@/lib/api';
 import { useNavigate, Link } from 'react-router-dom';
-import { toast } from 'sonner';
 import { Leaf, Loader2, Eye, EyeOff } from 'lucide-react';
 
 /* ── Schemas ──────────────────────────────────────────── */
@@ -17,7 +16,7 @@ const emailSchema = z.object({
     .regex(/[A-Z]/, 'Password must be at least 8 characters and include a number and uppercase letter')
     .regex(/[0-9]/, 'Password must be at least 8 characters and include a number and uppercase letter'),
   confirmPassword: z.string(),
-  terms: z.literal(true, { errorMap: () => ({ message: 'You must accept the terms to continue' }) }),
+  terms: z.boolean().refine(val => val === true, { message: 'You must accept the terms to continue' }),
 }).refine((d) => d.password === d.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],
@@ -32,7 +31,7 @@ const phoneSchema = z.object({
     .min(8, 'Password must be at least 8 characters and include a number and uppercase letter')
     .regex(/[A-Z]/, 'Password must be at least 8 characters and include a number and uppercase letter')
     .regex(/[0-9]/, 'Password must be at least 8 characters and include a number and uppercase letter'),
-  terms: z.literal(true, { errorMap: () => ({ message: 'You must accept the terms to continue' }) }),
+  terms: z.boolean().refine(val => val === true, { message: 'You must accept the terms to continue' }),
 });
 
 type EmailForm = z.infer<typeof emailSchema>;
@@ -93,9 +92,10 @@ export default function Register() {
     defaultValues: { name: '', countryCode: '+256', phone: '', password: '', terms: false as any },
   });
 
-  const activeForm = method === 'email' ? emailForm : phoneForm;
-  const password = activeForm.watch('password');
-  const strength = getStrength(password || '');
+  const emailPassword = emailForm.watch('password');
+  const phonePassword = phoneForm.watch('password');
+  const passwordStr = method === 'email' ? emailPassword : phonePassword;
+  const strength = getStrength(passwordStr || '');
 
   const onSubmitEmail = useCallback(async (data: EmailForm) => {
     setHasAttempted(true);
@@ -105,7 +105,7 @@ export default function Register() {
     // Validate with zod
     const result = emailSchema.safeParse(data);
     if (!result.success) {
-      result.error.errors.forEach((e) => {
+      result.error.issues.forEach((e: any) => {
         emailForm.setError(e.path[0] as any, { message: e.message });
       });
       setSubmitting(false);
@@ -139,7 +139,7 @@ export default function Register() {
 
     const result = phoneSchema.safeParse(data);
     if (!result.success) {
-      result.error.errors.forEach((e) => {
+      result.error.issues.forEach((e: any) => {
         phoneForm.setError(e.path[0] as any, { message: e.message });
       });
       setSubmitting(false);
@@ -295,7 +295,7 @@ export default function Register() {
                   </button>
                 </div>
                 {/* Strength bar */}
-                {password && (
+                {emailPassword && (
                   <div className="flex items-center gap-2 mt-2">
                     <div className="flex gap-1 flex-1">
                       {[1, 2, 3, 4].map((seg) => (
@@ -451,7 +451,7 @@ export default function Register() {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                {password && (
+                {phonePassword && (
                   <div className="flex items-center gap-2 mt-2">
                     <div className="flex gap-1 flex-1">
                       {[1, 2, 3, 4].map((seg) => (

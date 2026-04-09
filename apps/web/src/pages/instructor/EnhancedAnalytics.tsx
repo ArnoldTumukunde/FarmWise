@@ -349,7 +349,7 @@ export default function EnhancedAnalytics() {
                         border: '1px solid #e5e7eb',
                         fontSize: 13,
                       }}
-                      formatter={(value: number) => [`${value}%`, 'Watch Rate']}
+                      formatter={(value: any) => [`${value}%`, 'Watch Rate']}
                     />
                     <Bar dataKey="watchPercent" name="Watch %" radius={[0, 4, 4, 0]}>
                       {lectureWatch.map((entry, index) => (
@@ -412,7 +412,7 @@ export default function EnhancedAnalytics() {
                         border: '1px solid #e5e7eb',
                         fontSize: 13,
                       }}
-                      formatter={(value: number) => [formatUGX(value), 'Revenue']}
+                      formatter={(value: any) => [formatUGX(value), 'Revenue']}
                     />
                     <Legend />
                     <Bar dataKey="revenue" fill="#2E7D32" radius={[4, 4, 0, 0]} name="Revenue (UGX)" />
