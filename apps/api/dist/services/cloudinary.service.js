@@ -1,15 +1,18 @@
-import { v2 as cloudinary } from 'cloudinary';
-cloudinary.config({
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.storageService = exports.CloudinaryStorageService = void 0;
+const cloudinary_1 = require("cloudinary");
+cloudinary_1.v2.config({
     // CLOUDINARY_URL is automatically picked up if set in environment.
     // We can also let the global CLOUDINARY_URL do its job, but standard practice is setup:
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-export class CloudinaryStorageService {
+class CloudinaryStorageService {
     async uploadImage(file, folder) {
         return new Promise((resolve, reject) => {
-            cloudinary.uploader.upload_stream({ folder: `farmwise/${folder}` }, (error, result) => {
+            cloudinary_1.v2.uploader.upload_stream({ folder: `farmwise/${folder}` }, (error, result) => {
                 if (error || !result)
                     return reject(error);
                 resolve({
@@ -22,7 +25,7 @@ export class CloudinaryStorageService {
     }
     async uploadVideo(file, folder) {
         return new Promise((resolve, reject) => {
-            cloudinary.uploader.upload_stream({
+            cloudinary_1.v2.uploader.upload_stream({
                 folder: `farmwise/${folder}`,
                 resource_type: 'video',
                 eager: 'sp_hd/m3u8',
@@ -39,7 +42,7 @@ export class CloudinaryStorageService {
         });
     }
     getSignedVideoUrl(publicId, expiresInSeconds = 300) {
-        return cloudinary.url(publicId, {
+        return cloudinary_1.v2.url(publicId, {
             resource_type: 'video',
             format: 'm3u8',
             streaming_profile: 'hd',
@@ -49,7 +52,7 @@ export class CloudinaryStorageService {
         });
     }
     getHlsUrl(publicId) {
-        return cloudinary.url(publicId, {
+        return cloudinary_1.v2.url(publicId, {
             resource_type: 'video',
             format: 'm3u8',
             streaming_profile: 'hd',
@@ -57,7 +60,7 @@ export class CloudinaryStorageService {
         });
     }
     async deleteAsset(publicId) {
-        await cloudinary.uploader.destroy(publicId);
+        await cloudinary_1.v2.uploader.destroy(publicId);
     }
     generateUploadSignature(folder, resourceType = 'image') {
         const timestamp = Math.round(Date.now() / 1000);
@@ -81,7 +84,7 @@ export class CloudinaryStorageService {
                 apiSecret = match[2];
             }
         }
-        const signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret);
+        const signature = cloudinary_1.v2.utils.api_sign_request(paramsToSign, apiSecret);
         return {
             signature,
             timestamp,
@@ -93,6 +96,7 @@ export class CloudinaryStorageService {
         };
     }
 }
+exports.CloudinaryStorageService = CloudinaryStorageService;
 // Map the factory so we can swap with AWS later if needed
 const provider = process.env.STORAGE_PROVIDER || 'cloudinary';
-export const storageService = provider === 'aws' ? new CloudinaryStorageService() /* mock for now */ : new CloudinaryStorageService();
+exports.storageService = provider === 'aws' ? new CloudinaryStorageService() /* mock for now */ : new CloudinaryStorageService();

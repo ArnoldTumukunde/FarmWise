@@ -1,8 +1,11 @@
-import { prisma } from '@farmwise/db';
-import { NotificationService } from './notification.service';
-export class ReviewService {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ReviewService = void 0;
+const db_1 = require("@farmwise/db");
+const notification_service_1 = require("./notification.service");
+class ReviewService {
     static async getCourseReviews(courseId) {
-        return prisma.review.findMany({
+        return db_1.prisma.review.findMany({
             where: { courseId, isHidden: false },
             include: {
                 user: { select: { profile: { select: { displayName: true, avatarPublicId: true } } } },
@@ -12,34 +15,34 @@ export class ReviewService {
         });
     }
     static async getMyReview(userId, courseId) {
-        return prisma.review.findUnique({
+        return db_1.prisma.review.findUnique({
             where: { userId_courseId: { userId, courseId } }
         });
     }
     static async createReview(userId, courseId, rating, content) {
-        const enrollment = await prisma.enrollment.findUnique({
+        const enrollment = await db_1.prisma.enrollment.findUnique({
             where: { userId_courseId: { userId, courseId } }
         });
         if (!enrollment || enrollment.status !== 'ACTIVE')
             throw new Error("Must be enrolled to review");
         const editableUntil = new Date();
         editableUntil.setDate(editableUntil.getDate() + 60);
-        const review = await prisma.review.create({
+        const review = await db_1.prisma.review.create({
             data: { userId, courseId, rating, content, editableUntil }
         });
         await this.updateCourseRating(courseId);
         // Notify the instructor about the new review
         try {
-            const course = await prisma.course.findUnique({
+            const course = await db_1.prisma.course.findUnique({
                 where: { id: courseId },
                 select: { title: true, instructorId: true },
             });
             if (course) {
-                const instructor = await prisma.user.findUnique({
+                const instructor = await db_1.prisma.user.findUnique({
                     where: { id: course.instructorId },
                     select: { phone: true, email: true },
                 });
-                await NotificationService.notifyReviewReceived(course.instructorId, course.title, rating, instructor?.phone, instructor?.email);
+                await notification_service_1.NotificationService.notifyReviewReceived(course.instructorId, course.title, rating, instructor?.phone, instructor?.email);
             }
         }
         catch (notifyErr) {
@@ -48,12 +51,12 @@ export class ReviewService {
         return review;
     }
     static async updateReview(userId, reviewId, rating, content) {
-        const review = await prisma.review.findUnique({ where: { id: reviewId } });
+        const review = await db_1.prisma.review.findUnique({ where: { id: reviewId } });
         if (!review || review.userId !== userId)
             throw new Error("Unauthorised or not owner");
         if (review.editableUntil && review.editableUntil < new Date())
             throw new Error("Review edit period has expired");
-        const updated = await prisma.review.update({
+        const updated = await db_1.prisma.review.update({
             where: { id: reviewId },
             data: { rating, content, updatedAt: new Date() }
         });
@@ -61,21 +64,21 @@ export class ReviewService {
         return updated;
     }
     static async instructorResponse(instructorId, reviewId, response) {
-        const review = await prisma.review.findUnique({ where: { id: reviewId }, include: { course: true } });
+        const review = await db_1.prisma.review.findUnique({ where: { id: reviewId }, include: { course: true } });
         if (!review || review.course.instructorId !== instructorId)
             throw new Error("Unauthorised");
-        return prisma.review.update({
+        return db_1.prisma.review.update({
             where: { id: reviewId },
             data: { instructorResponse: response, respondedAt: new Date() }
         });
     }
     static async updateCourseRating(courseId) {
-        const aggregates = await prisma.review.aggregate({
+        const aggregates = await db_1.prisma.review.aggregate({
             where: { courseId, isHidden: false },
             _avg: { rating: true },
             _count: { rating: true }
         });
-        await prisma.course.update({
+        await db_1.prisma.course.update({
             where: { id: courseId },
             data: {
                 averageRating: aggregates._avg.rating || 0,
@@ -84,18 +87,19 @@ export class ReviewService {
         });
     }
     static async upvoteReview(userId, reviewId) {
-        const existing = await prisma.reviewUpvote.findUnique({
+        const existing = await db_1.prisma.reviewUpvote.findUnique({
             where: { userId_reviewId: { userId, reviewId } }
         });
         if (existing) {
-            await prisma.reviewUpvote.delete({ where: { userId_reviewId: { userId, reviewId } } });
-            await prisma.review.update({ where: { id: reviewId }, data: { upvotes: { decrement: 1 } } });
+            await db_1.prisma.reviewUpvote.delete({ where: { userId_reviewId: { userId, reviewId } } });
+            await db_1.prisma.review.update({ where: { id: reviewId }, data: { upvotes: { decrement: 1 } } });
             return { upvoted: false };
         }
         else {
-            await prisma.reviewUpvote.create({ data: { userId, reviewId } });
-            await prisma.review.update({ where: { id: reviewId }, data: { upvotes: { increment: 1 } } });
+            await db_1.prisma.reviewUpvote.create({ data: { userId, reviewId } });
+            await db_1.prisma.review.update({ where: { id: reviewId }, data: { upvotes: { increment: 1 } } });
             return { upvoted: true };
         }
     }
 }
+exports.ReviewService = ReviewService;

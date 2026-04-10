@@ -1,9 +1,16 @@
-import Stripe from 'stripe';
-import { prisma } from '@farmwise/db';
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.StripeService = exports.stripe = void 0;
+exports.toStripeAmount = toStripeAmount;
+const stripe_1 = __importDefault(require("stripe"));
+const db_1 = require("@farmwise/db");
 if (!process.env.STRIPE_SECRET_KEY) {
     console.warn("STRIPE_SECRET_KEY is not set. Payments will not work.");
 }
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock', {
+exports.stripe = new stripe_1.default(process.env.STRIPE_SECRET_KEY || 'sk_test_mock', {
     apiVersion: '2023-10-16',
 });
 /**
@@ -11,12 +18,12 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock'
  * UGX, KES, TZS, etc. are zero-decimal in Stripe.
  */
 const ZERO_DECIMAL_CURRENCIES = new Set(['ugx', 'kes', 'tzs', 'ghs', 'jpy', 'krw']);
-export function toStripeAmount(amount, currency) {
+function toStripeAmount(amount, currency) {
     return ZERO_DECIMAL_CURRENCIES.has(currency.toLowerCase())
         ? Math.round(amount)
         : Math.round(amount * 100);
 }
-export class StripeService {
+class StripeService {
     /**
      * Creates a Stripe Checkout session for course purchases.
      */
@@ -28,7 +35,7 @@ export class StripeService {
         const currency = 'ugx';
         const unitAmount = toStripeAmount(Number(course.price), currency);
         // Check if instructor has Stripe Connect set up for revenue split
-        const instructorProfile = await prisma.profile.findUnique({
+        const instructorProfile = await db_1.prisma.profile.findUnique({
             where: { userId: course.instructorId },
             select: { stripeConnectAccountId: true, stripeConnectStatus: true },
         });
@@ -69,17 +76,18 @@ export class StripeService {
                 },
             };
         }
-        const session = await stripe.checkout.sessions.create(sessionParams);
+        const session = await exports.stripe.checkout.sessions.create(sessionParams);
         return session;
     }
     /**
      * Generates an onboarding link for an Instructor to connect to Stripe Connect Express.
      */
     static async createConnectAccount(instructorId, email, returnUrl, refreshUrl) {
-        let instructor = await prisma.user.findUnique({ where: { id: instructorId } });
+        let instructor = await db_1.prisma.user.findUnique({ where: { id: instructorId } });
         // In a real app we would have a stripeAccountId property on the user model,
         // For now we will mock this flow, as we don't have a stripeAccountId column in the schema.
         // Assuming we'll just return a mock URL for now until the schema is explicitly expanded for Connect.
         return "https://connect.stripe.com/express/mock-onboarding-url";
     }
 }
+exports.StripeService = StripeService;

@@ -1,9 +1,15 @@
-import { prisma } from '@farmwise/db';
-import sanitizeHtml from 'sanitize-html';
-export class CmsService {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CmsService = void 0;
+const db_1 = require("@farmwise/db");
+const sanitize_html_1 = __importDefault(require("sanitize-html"));
+class CmsService {
     // ─── PLATFORM CONFIG (key-value) ──────────────────────────────
     static async getSettings() {
-        const rows = await prisma.platformConfig.findMany();
+        const rows = await db_1.prisma.platformConfig.findMany();
         const map = {};
         for (const r of rows) {
             try {
@@ -43,7 +49,7 @@ export class CmsService {
         const ops = Object.entries(data).map(([field, value]) => {
             const key = `${section}.${field}`;
             const val = JSON.stringify(value);
-            return prisma.platformConfig.upsert({
+            return db_1.prisma.platformConfig.upsert({
                 where: { key },
                 update: { value: val },
                 create: { key, value: val },
@@ -53,10 +59,10 @@ export class CmsService {
     }
     // ─── HOMEPAGE SECTIONS ────────────────────────────────────────
     static async getHomepageSections() {
-        return prisma.homepageSection.findMany({ orderBy: { order: 'asc' } });
+        return db_1.prisma.homepageSection.findMany({ orderBy: { order: 'asc' } });
     }
     static async updateHomepageSection(key, data) {
-        return prisma.homepageSection.update({
+        return db_1.prisma.homepageSection.update({
             where: { key },
             data: {
                 ...(data.enabled !== undefined && { enabled: data.enabled }),
@@ -66,26 +72,26 @@ export class CmsService {
         });
     }
     static async reorderHomepageSections(orderedKeys) {
-        const ops = orderedKeys.map((key, index) => prisma.homepageSection.update({ where: { key }, data: { order: index } }));
-        await prisma.$transaction(ops);
+        const ops = orderedKeys.map((key, index) => db_1.prisma.homepageSection.update({ where: { key }, data: { order: index } }));
+        await db_1.prisma.$transaction(ops);
     }
     // ─── STATIC PAGES ─────────────────────────────────────────────
     static async listPages(includeUnpublished = false) {
         const where = includeUnpublished ? {} : { isPublished: true };
-        return prisma.page.findMany({ where, orderBy: { updatedAt: 'desc' } });
+        return db_1.prisma.page.findMany({ where, orderBy: { updatedAt: 'desc' } });
     }
     static async getPage(slug) {
-        return prisma.page.findUnique({ where: { slug } });
+        return db_1.prisma.page.findUnique({ where: { slug } });
     }
     static async getPageById(id) {
-        return prisma.page.findUnique({ where: { id } });
+        return db_1.prisma.page.findUnique({ where: { id } });
     }
     static async createPage(data) {
-        return prisma.page.create({
+        return db_1.prisma.page.create({
             data: {
                 slug: data.slug,
                 title: data.title,
-                content: sanitizeHtml(data.content, sanitizeOptions),
+                content: (0, sanitize_html_1.default)(data.content, sanitizeOptions),
                 isPublished: data.isPublished ?? false,
                 metaTitle: data.metaTitle,
                 metaDesc: data.metaDesc,
@@ -99,21 +105,21 @@ export class CmsService {
         if (data.title !== undefined)
             updateData.title = data.title;
         if (data.content !== undefined)
-            updateData.content = sanitizeHtml(data.content, sanitizeOptions);
+            updateData.content = (0, sanitize_html_1.default)(data.content, sanitizeOptions);
         if (data.isPublished !== undefined)
             updateData.isPublished = data.isPublished;
         if (data.metaTitle !== undefined)
             updateData.metaTitle = data.metaTitle;
         if (data.metaDesc !== undefined)
             updateData.metaDesc = data.metaDesc;
-        return prisma.page.update({ where: { id }, data: updateData });
+        return db_1.prisma.page.update({ where: { id }, data: updateData });
     }
     static async deletePage(id) {
-        return prisma.page.delete({ where: { id } });
+        return db_1.prisma.page.delete({ where: { id } });
     }
     // ─── AUDIT LOG ────────────────────────────────────────────────
     static async log(adminId, action, entity, entityId, details, ipAddress) {
-        return prisma.auditLog.create({
+        return db_1.prisma.auditLog.create({
             data: { adminId, action, entity, entityId, details, ipAddress },
         });
     }
@@ -127,22 +133,23 @@ export class CmsService {
         if (filters?.entity)
             where.entity = filters.entity;
         const [logs, total] = await Promise.all([
-            prisma.auditLog.findMany({
+            db_1.prisma.auditLog.findMany({
                 where,
                 skip,
                 take: limit,
                 include: { admin: { select: { email: true, profile: { select: { displayName: true } } } } },
                 orderBy: { createdAt: 'desc' },
             }),
-            prisma.auditLog.count({ where }),
+            db_1.prisma.auditLog.count({ where }),
         ]);
         return { logs, total, page, totalPages: Math.ceil(total / limit) };
     }
 }
+exports.CmsService = CmsService;
 const sanitizeOptions = {
-    allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'h1', 'h2', 'iframe']),
+    allowedTags: sanitize_html_1.default.defaults.allowedTags.concat(['img', 'h1', 'h2', 'iframe']),
     allowedAttributes: {
-        ...sanitizeHtml.defaults.allowedAttributes,
+        ...sanitize_html_1.default.defaults.allowedAttributes,
         img: ['src', 'alt', 'width', 'height'],
         a: ['href', 'target', 'rel'],
         iframe: ['src', 'width', 'height', 'frameborder', 'allowfullscreen'],

@@ -1,5 +1,8 @@
-import { AuthService } from '../services/auth.service';
-export class AuthController {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AuthController = void 0;
+const auth_service_1 = require("../services/auth.service");
+class AuthController {
     static async me(req, res) {
         if (!req.user)
             return res.status(401).json({ error: 'Not authenticated' });
@@ -9,17 +12,17 @@ export class AuthController {
         try {
             const { email, phone, password, name } = req.body;
             if (email && password) {
-                const hash = await AuthService.hashPassword(password);
-                const result = await AuthService.registerEmail(email, hash, name);
+                const hash = await auth_service_1.AuthService.hashPassword(password);
+                const result = await auth_service_1.AuthService.registerEmail(email, hash, name);
                 return res.status(201).json(result);
             }
             else if (phone && password) {
-                const hash = await AuthService.hashPassword(password);
-                const result = await AuthService.registerPhone(phone, hash, name);
+                const hash = await auth_service_1.AuthService.hashPassword(password);
+                const result = await auth_service_1.AuthService.registerPhone(phone, hash, name);
                 return res.status(201).json(result);
             }
             else if (phone) {
-                const result = await AuthService.registerPhone(phone, undefined, name);
+                const result = await auth_service_1.AuthService.registerPhone(phone, undefined, name);
                 return res.status(201).json(result);
             }
             return res.status(400).json({ error: 'Provide email+password or phone' });
@@ -33,10 +36,10 @@ export class AuthController {
             const { email, phone, token, otp } = req.body;
             let result;
             if (token) {
-                result = await AuthService.verifyEmail(token);
+                result = await auth_service_1.AuthService.verifyEmail(token);
             }
             else if (phone && otp) {
-                result = await AuthService.verifyPhone(phone, otp);
+                result = await auth_service_1.AuthService.verifyPhone(phone, otp);
             }
             else {
                 return res.status(400).json({ error: 'Provide token or phone+otp' });
@@ -59,8 +62,8 @@ export class AuthController {
                 return res.status(400).json({ error: 'Email or phone plus password required' });
             }
             const result = email
-                ? await AuthService.loginEmail(email, passwordPlain)
-                : await AuthService.loginPhone(phone, passwordPlain);
+                ? await auth_service_1.AuthService.loginEmail(email, passwordPlain)
+                : await auth_service_1.AuthService.loginPhone(phone, passwordPlain);
             res.cookie('refreshToken', result.refreshToken, {
                 httpOnly: true,
                 sameSite: 'strict',
@@ -77,8 +80,8 @@ export class AuthController {
             const refreshToken = req.cookies.refreshToken;
             if (!refreshToken)
                 return res.status(401).json({ error: 'No refresh token' });
-            const decoded = AuthService.verifyRefreshToken(refreshToken);
-            const newTokens = AuthService.generateTokens(decoded.userId, decoded.role);
+            const decoded = auth_service_1.AuthService.verifyRefreshToken(refreshToken);
+            const newTokens = auth_service_1.AuthService.generateTokens(decoded.userId, decoded.role);
             res.cookie('refreshToken', newTokens.refreshToken, {
                 httpOnly: true,
                 sameSite: 'strict',
@@ -100,10 +103,10 @@ export class AuthController {
             if (!email && !phone)
                 return res.status(400).json({ error: 'Email or phone required' });
             if (phone) {
-                await AuthService.requestPhonePasswordReset(phone);
+                await auth_service_1.AuthService.requestPhonePasswordReset(phone);
                 return res.json({ success: true, message: 'OTP sent if account exists' });
             }
-            await AuthService.requestPasswordReset(email);
+            await auth_service_1.AuthService.requestPasswordReset(email);
             res.json({ success: true, message: 'Reset email sent if user exists' });
         }
         catch (error) {
@@ -118,12 +121,12 @@ export class AuthController {
                 return res.status(400).json({ error: 'newPassword required' });
             if (!token && (!phone || !otp))
                 return res.status(400).json({ error: 'Provide token or phone+otp' });
-            const hash = await AuthService.hashPassword(newPassword);
+            const hash = await auth_service_1.AuthService.hashPassword(newPassword);
             if (phone && otp) {
-                await AuthService.resetPasswordByPhone(phone, otp, hash);
+                await auth_service_1.AuthService.resetPasswordByPhone(phone, otp, hash);
             }
             else {
-                await AuthService.resetPassword(token, hash);
+                await auth_service_1.AuthService.resetPassword(token, hash);
             }
             res.json({ success: true, message: 'Password reset' });
         }
@@ -136,7 +139,7 @@ export class AuthController {
             const { phone } = req.body;
             if (!phone)
                 return res.status(400).json({ error: 'Phone required' });
-            await AuthService.resendVerificationOtp(phone);
+            await auth_service_1.AuthService.resendVerificationOtp(phone);
             res.json({ success: true });
         }
         catch (error) {
@@ -148,7 +151,7 @@ export class AuthController {
             const { email } = req.body;
             if (!email)
                 return res.status(400).json({ error: 'Email required' });
-            await AuthService.resendVerificationEmail(email);
+            await auth_service_1.AuthService.resendVerificationEmail(email);
             res.json({ success: true });
         }
         catch (error) {
@@ -157,3 +160,4 @@ export class AuthController {
         }
     }
 }
+exports.AuthController = AuthController;

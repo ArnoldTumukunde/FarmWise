@@ -1,79 +1,89 @@
-import { AdminService } from '../services/admin.service';
-import { CmsService } from '../services/cms.service';
-export const getDashboard = async (req, res) => {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.deleteCategory = exports.updateCategory = exports.createCategory = exports.getCategories = exports.updateSettings = exports.getSettings = exports.sendBroadcast = exports.getBroadcasts = exports.getRevenue = exports.rejectRefund = exports.approveRefund = exports.getRefunds = exports.deleteCoupon = exports.updateCoupon = exports.createCoupon = exports.getCoupons = exports.getQuestionsModeration = exports.getReviewsModeration = exports.getUserById = exports.moderateReview = exports.getFlaggedReviews = exports.toggleFeatured = exports.moderateCourse = exports.getCoursesForReview = exports.deleteReview = exports.unpublishCourse = exports.deleteCourse = exports.listAllCourses = exports.deleteUser = exports.suspendUser = exports.updateUserRole = exports.reviewApplication = exports.getApplications = exports.getUsers = exports.getDashboard = void 0;
+const admin_service_1 = require("../services/admin.service");
+const cms_service_1 = require("../services/cms.service");
+const getDashboard = async (req, res) => {
     try {
-        const kpis = await AdminService.getDashboardKPIs();
+        const kpis = await admin_service_1.AdminService.getDashboardKPIs();
         res.json(kpis);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const getUsers = async (req, res) => {
+exports.getDashboard = getDashboard;
+const getUsers = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const result = await AdminService.listUsers(page);
+        const result = await admin_service_1.AdminService.listUsers(page);
         res.json(result);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const getApplications = async (req, res) => {
+exports.getUsers = getUsers;
+const getApplications = async (req, res) => {
     try {
         const status = req.query.status;
-        const apps = await AdminService.getInstructorApplications(status);
+        const apps = await admin_service_1.AdminService.getInstructorApplications(status);
         res.json({ applications: apps });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const reviewApplication = async (req, res) => {
+exports.getApplications = getApplications;
+const reviewApplication = async (req, res) => {
     try {
         const { action, note } = req.body;
-        const app = await AdminService.reviewInstructorApplication(req.user.id, req.params.id, action, note);
-        await CmsService.log(req.user.id, `application.${action.toLowerCase()}`, 'InstructorApplication', req.params.id, { action, note }, req.ip);
+        const app = await admin_service_1.AdminService.reviewInstructorApplication(req.user.id, req.params.id, action, note);
+        await cms_service_1.CmsService.log(req.user.id, `application.${action.toLowerCase()}`, 'InstructorApplication', req.params.id, { action, note }, req.ip);
         res.json({ application: app });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const updateUserRole = async (req, res) => {
+exports.reviewApplication = reviewApplication;
+const updateUserRole = async (req, res) => {
     try {
         const { role } = req.body;
-        const user = await AdminService.updateUserRole(req.params.id, role);
-        await CmsService.log(req.user.id, 'user.updateRole', 'User', req.params.id, { role }, req.ip);
+        const user = await admin_service_1.AdminService.updateUserRole(req.params.id, role);
+        await cms_service_1.CmsService.log(req.user.id, 'user.updateRole', 'User', req.params.id, { role }, req.ip);
         res.json({ user });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const suspendUser = async (req, res) => {
+exports.updateUserRole = updateUserRole;
+const suspendUser = async (req, res) => {
     try {
         const { suspended } = req.body;
-        const user = await AdminService.suspendUser(req.params.id, suspended);
+        const user = await admin_service_1.AdminService.suspendUser(req.params.id, suspended);
         res.json({ user });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const deleteUser = async (req, res) => {
+exports.suspendUser = suspendUser;
+const deleteUser = async (req, res) => {
     try {
-        await AdminService.deleteUser(req.params.id);
+        await admin_service_1.AdminService.deleteUser(req.params.id);
         res.json({ message: 'User deleted successfully' });
     }
     catch (e) {
         res.status(400).json({ error: e.message });
     }
 };
-export const listAllCourses = async (req, res) => {
+exports.deleteUser = deleteUser;
+const listAllCourses = async (req, res) => {
     try {
         const { status, search, page } = req.query;
-        const result = await AdminService.listAllCourses({
+        const result = await admin_service_1.AdminService.listAllCourses({
             status: status,
             search: search,
             page: parseInt(page) || 1
@@ -84,203 +94,224 @@ export const listAllCourses = async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 };
-export const deleteCourse = async (req, res) => {
+exports.listAllCourses = listAllCourses;
+const deleteCourse = async (req, res) => {
     try {
-        await AdminService.deleteCourse(req.params.id);
+        await admin_service_1.AdminService.deleteCourse(req.params.id);
         res.json({ message: 'Course deleted successfully' });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const unpublishCourse = async (req, res) => {
+exports.deleteCourse = deleteCourse;
+const unpublishCourse = async (req, res) => {
     try {
-        const course = await AdminService.unpublishCourse(req.params.id);
+        const course = await admin_service_1.AdminService.unpublishCourse(req.params.id);
         res.json({ course });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const deleteReview = async (req, res) => {
+exports.unpublishCourse = unpublishCourse;
+const deleteReview = async (req, res) => {
     try {
-        await AdminService.deleteReview(req.params.id);
+        await admin_service_1.AdminService.deleteReview(req.params.id);
         res.json({ message: 'Review deleted successfully' });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const getCoursesForReview = async (req, res) => {
+exports.deleteReview = deleteReview;
+const getCoursesForReview = async (req, res) => {
     try {
-        const courses = await AdminService.listCoursesForReview();
+        const courses = await admin_service_1.AdminService.listCoursesForReview();
         res.json({ courses });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const moderateCourse = async (req, res) => {
+exports.getCoursesForReview = getCoursesForReview;
+const moderateCourse = async (req, res) => {
     try {
         const { action } = req.body;
-        const course = await AdminService.moderateCourse(req.params.id, action);
-        await CmsService.log(req.user.id, `course.moderate.${action.toLowerCase()}`, 'Course', req.params.id, { action }, req.ip);
+        const course = await admin_service_1.AdminService.moderateCourse(req.params.id, action);
+        await cms_service_1.CmsService.log(req.user.id, `course.moderate.${action.toLowerCase()}`, 'Course', req.params.id, { action }, req.ip);
         res.json({ course });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const toggleFeatured = async (req, res) => {
+exports.moderateCourse = moderateCourse;
+const toggleFeatured = async (req, res) => {
     try {
-        const course = await AdminService.toggleCourseFeatured(req.params.id, req.body.isFeatured);
+        const course = await admin_service_1.AdminService.toggleCourseFeatured(req.params.id, req.body.isFeatured);
         res.json({ course });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const getFlaggedReviews = async (req, res) => {
+exports.toggleFeatured = toggleFeatured;
+const getFlaggedReviews = async (req, res) => {
     try {
-        const reviews = await AdminService.listFlaggedReviews();
+        const reviews = await admin_service_1.AdminService.listFlaggedReviews();
         res.json({ reviews });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const moderateReview = async (req, res) => {
+exports.getFlaggedReviews = getFlaggedReviews;
+const moderateReview = async (req, res) => {
     try {
-        const review = await AdminService.hideReview(req.params.id, req.body.isHidden);
-        await CmsService.log(req.user.id, req.body.isHidden ? 'review.hide' : 'review.unhide', 'Review', req.params.id, { isHidden: req.body.isHidden }, req.ip);
+        const review = await admin_service_1.AdminService.hideReview(req.params.id, req.body.isHidden);
+        await cms_service_1.CmsService.log(req.user.id, req.body.isHidden ? 'review.hide' : 'review.unhide', 'Review', req.params.id, { isHidden: req.body.isHidden }, req.ip);
         res.json({ review });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
+exports.moderateReview = moderateReview;
 // --- SINGLE USER DETAIL ---
-export const getUserById = async (req, res) => {
+const getUserById = async (req, res) => {
     try {
-        const user = await AdminService.getUserById(req.params.id);
+        const user = await admin_service_1.AdminService.getUserById(req.params.id);
         res.json({ user });
     }
     catch (e) {
         res.status(404).json({ error: e.message });
     }
 };
+exports.getUserById = getUserById;
 // --- REVIEWS MODERATION ---
-export const getReviewsModeration = async (req, res) => {
+const getReviewsModeration = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const result = await AdminService.getReviewsForModeration(page);
+        const result = await admin_service_1.AdminService.getReviewsForModeration(page);
         res.json(result);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
+exports.getReviewsModeration = getReviewsModeration;
 // --- QUESTIONS MODERATION ---
-export const getQuestionsModeration = async (req, res) => {
+const getQuestionsModeration = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const result = await AdminService.getQuestionsForModeration(page);
+        const result = await admin_service_1.AdminService.getQuestionsForModeration(page);
         res.json(result);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
+exports.getQuestionsModeration = getQuestionsModeration;
 // --- COUPONS ---
-export const getCoupons = async (req, res) => {
+const getCoupons = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const result = await AdminService.listCoupons(page);
+        const result = await admin_service_1.AdminService.listCoupons(page);
         res.json(result);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const createCoupon = async (req, res) => {
+exports.getCoupons = getCoupons;
+const createCoupon = async (req, res) => {
     try {
-        const coupon = await AdminService.createCoupon(req.body);
+        const coupon = await admin_service_1.AdminService.createCoupon(req.body);
         res.status(201).json({ coupon });
     }
     catch (e) {
         res.status(400).json({ error: e.message });
     }
 };
-export const updateCoupon = async (req, res) => {
+exports.createCoupon = createCoupon;
+const updateCoupon = async (req, res) => {
     try {
-        const coupon = await AdminService.updateCoupon(req.params.id, req.body);
+        const coupon = await admin_service_1.AdminService.updateCoupon(req.params.id, req.body);
         res.json({ coupon });
     }
     catch (e) {
         res.status(400).json({ error: e.message });
     }
 };
-export const deleteCoupon = async (req, res) => {
+exports.updateCoupon = updateCoupon;
+const deleteCoupon = async (req, res) => {
     try {
-        await AdminService.deleteCoupon(req.params.id);
+        await admin_service_1.AdminService.deleteCoupon(req.params.id);
         res.json({ message: 'Coupon deleted successfully' });
     }
     catch (e) {
         res.status(400).json({ error: e.message });
     }
 };
+exports.deleteCoupon = deleteCoupon;
 // --- REFUNDS ---
-export const getRefunds = async (req, res) => {
+const getRefunds = async (req, res) => {
     try {
         const status = req.query.status;
         const page = parseInt(req.query.page) || 1;
-        const result = await AdminService.listRefunds(status, page);
+        const result = await admin_service_1.AdminService.listRefunds(status, page);
         res.json(result);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const approveRefund = async (req, res) => {
+exports.getRefunds = getRefunds;
+const approveRefund = async (req, res) => {
     try {
-        const enrollment = await AdminService.approveRefund(req.params.id);
+        const enrollment = await admin_service_1.AdminService.approveRefund(req.params.id);
         res.json({ enrollment });
     }
     catch (e) {
         res.status(400).json({ error: e.message });
     }
 };
-export const rejectRefund = async (req, res) => {
+exports.approveRefund = approveRefund;
+const rejectRefund = async (req, res) => {
     try {
-        const result = await AdminService.rejectRefund(req.params.id);
+        const result = await admin_service_1.AdminService.rejectRefund(req.params.id);
         res.json(result);
     }
     catch (e) {
         res.status(400).json({ error: e.message });
     }
 };
+exports.rejectRefund = rejectRefund;
 // --- REVENUE ---
-export const getRevenue = async (req, res) => {
+const getRevenue = async (req, res) => {
     try {
-        const analytics = await AdminService.getRevenueAnalytics();
+        const analytics = await admin_service_1.AdminService.getRevenueAnalytics();
         res.json(analytics);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
+exports.getRevenue = getRevenue;
 // --- BROADCASTS ---
-export const getBroadcasts = async (req, res) => {
+const getBroadcasts = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const result = await AdminService.getBroadcastHistory(page);
+        const result = await admin_service_1.AdminService.getBroadcastHistory(page);
         res.json(result);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const sendBroadcast = async (req, res) => {
+exports.getBroadcasts = getBroadcasts;
+const sendBroadcast = async (req, res) => {
     try {
         const title = req.body.title || req.body.subject;
         const body = req.body.body || req.body.message;
@@ -288,71 +319,78 @@ export const sendBroadcast = async (req, res) => {
         if (!title || !body) {
             return res.status(400).json({ error: 'Title/subject and body/message are required' });
         }
-        const result = await AdminService.sendBroadcast(title, body, link, recipients, channels);
-        await CmsService.log(req.user.id, 'broadcast.send', 'Notification', undefined, { title, recipientCount: result.recipientCount, channels: result.channels }, req.ip);
+        const result = await admin_service_1.AdminService.sendBroadcast(title, body, link, recipients, channels);
+        await cms_service_1.CmsService.log(req.user.id, 'broadcast.send', 'Notification', undefined, { title, recipientCount: result.recipientCount, channels: result.channels }, req.ip);
         res.status(201).json(result);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
+exports.sendBroadcast = sendBroadcast;
 // --- SETTINGS ---
-export const getSettings = async (req, res) => {
+const getSettings = async (req, res) => {
     try {
-        const settings = await AdminService.getSettings();
+        const settings = await admin_service_1.AdminService.getSettings();
         res.json(settings);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const updateSettings = async (req, res) => {
+exports.getSettings = getSettings;
+const updateSettings = async (req, res) => {
     try {
         const { section, data } = req.body;
         if (!section || !data)
             return res.status(400).json({ error: 'section and data are required' });
-        const settings = await AdminService.updateSettings(section, data);
-        await CmsService.log(req.user.id, `settings.update.${section}`, 'PlatformConfig', section, data, req.ip);
+        const settings = await admin_service_1.AdminService.updateSettings(section, data);
+        await cms_service_1.CmsService.log(req.user.id, `settings.update.${section}`, 'PlatformConfig', section, data, req.ip);
         res.json(settings);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
+exports.updateSettings = updateSettings;
 // --- CATEGORIES ---
-export const getCategories = async (req, res) => {
+const getCategories = async (req, res) => {
     try {
-        const categories = await AdminService.listCategories();
+        const categories = await admin_service_1.AdminService.listCategories();
         res.json({ categories });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 };
-export const createCategory = async (req, res) => {
+exports.getCategories = getCategories;
+const createCategory = async (req, res) => {
     try {
-        const category = await AdminService.createCategory(req.body);
+        const category = await admin_service_1.AdminService.createCategory(req.body);
         res.status(201).json({ category });
     }
     catch (e) {
         res.status(400).json({ error: e.message });
     }
 };
-export const updateCategory = async (req, res) => {
+exports.createCategory = createCategory;
+const updateCategory = async (req, res) => {
     try {
-        const category = await AdminService.updateCategory(req.params.id, req.body);
+        const category = await admin_service_1.AdminService.updateCategory(req.params.id, req.body);
         res.json({ category });
     }
     catch (e) {
         res.status(400).json({ error: e.message });
     }
 };
-export const deleteCategory = async (req, res) => {
+exports.updateCategory = updateCategory;
+const deleteCategory = async (req, res) => {
     try {
-        await AdminService.deleteCategory(req.params.id);
+        await admin_service_1.AdminService.deleteCategory(req.params.id);
         res.json({ message: 'Category deleted successfully' });
     }
     catch (e) {
         res.status(400).json({ error: e.message });
     }
 };
+exports.deleteCategory = deleteCategory;

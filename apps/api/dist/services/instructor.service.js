@@ -1,8 +1,11 @@
-import { prisma } from '@farmwise/db';
-import { sanitizeRichText } from '../utils/sanitize';
-export class InstructorService {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.InstructorService = void 0;
+const db_1 = require("@farmwise/db");
+const sanitize_1 = require("../utils/sanitize");
+class InstructorService {
     static async listInstructorCourses(instructorId) {
-        return prisma.course.findMany({
+        return db_1.prisma.course.findMany({
             where: { instructorId },
             include: {
                 category: true,
@@ -18,7 +21,7 @@ export class InstructorService {
         // Robust unique slug generation
         let isUnique = false;
         while (!isUnique) {
-            const existing = await prisma.course.findUnique({ where: { slug } });
+            const existing = await db_1.prisma.course.findUnique({ where: { slug } });
             if (!existing) {
                 isUnique = true;
             }
@@ -27,7 +30,7 @@ export class InstructorService {
                 slug = `${baseSlug}-${randomStr}`;
             }
         }
-        return prisma.course.create({
+        return db_1.prisma.course.create({
             data: {
                 title: data.title,
                 slug,
@@ -42,7 +45,7 @@ export class InstructorService {
         });
     }
     static async getCourseDraft(instructorId, courseId) {
-        const course = await prisma.course.findFirst({
+        const course = await db_1.prisma.course.findFirst({
             where: { id: courseId, instructorId },
             include: {
                 category: true,
@@ -73,14 +76,14 @@ export class InstructorService {
         return course;
     }
     static async updateCourse(instructorId, courseId, data) {
-        const course = await prisma.course.findUnique({ where: { id: courseId } });
+        const course = await db_1.prisma.course.findUnique({ where: { id: courseId } });
         if (!course || course.instructorId !== instructorId) {
             throw new Error('Course not found or access denied');
         }
         if (typeof data.description === 'string') {
-            data.description = sanitizeRichText(data.description);
+            data.description = (0, sanitize_1.sanitizeRichText)(data.description);
         }
-        return prisma.course.update({
+        return db_1.prisma.course.update({
             where: { id: courseId },
             data,
             include: {
@@ -96,14 +99,14 @@ export class InstructorService {
      * Update a section's title. Verifies instructor ownership via section->course->instructorId.
      */
     static async updateSection(sectionId, instructorId, data) {
-        const section = await prisma.section.findUnique({
+        const section = await db_1.prisma.section.findUnique({
             where: { id: sectionId },
             include: { course: true },
         });
         if (!section || section.course.instructorId !== instructorId) {
             throw new Error('Section not found or access denied');
         }
-        return prisma.section.update({
+        return db_1.prisma.section.update({
             where: { id: sectionId },
             data: { title: data.title },
         });
@@ -112,7 +115,7 @@ export class InstructorService {
      * Update a lecture's metadata. Verifies instructor ownership via lecture->section->course->instructorId.
      */
     static async updateLecture(lectureId, instructorId, data) {
-        const lecture = await prisma.lecture.findUnique({
+        const lecture = await db_1.prisma.lecture.findUnique({
             where: { id: lectureId },
             include: { section: { include: { course: true } } },
         });
@@ -136,7 +139,7 @@ export class InstructorService {
             updateData.content = data.content;
         if (data.quizData !== undefined)
             updateData.quizData = data.quizData;
-        return prisma.lecture.update({
+        return db_1.prisma.lecture.update({
             where: { id: lectureId },
             data: updateData,
         });
@@ -145,67 +148,67 @@ export class InstructorService {
      * Delete a section (CASCADE deletes lectures). Verifies instructor ownership.
      */
     static async deleteSection(sectionId, instructorId) {
-        const section = await prisma.section.findUnique({
+        const section = await db_1.prisma.section.findUnique({
             where: { id: sectionId },
             include: { course: true },
         });
         if (!section || section.course.instructorId !== instructorId) {
             throw new Error('Section not found or access denied');
         }
-        await prisma.section.delete({ where: { id: sectionId } });
+        await db_1.prisma.section.delete({ where: { id: sectionId } });
         return { success: true };
     }
     /**
      * Delete a lecture. Verifies instructor ownership.
      */
     static async deleteLecture(lectureId, instructorId) {
-        const lecture = await prisma.lecture.findUnique({
+        const lecture = await db_1.prisma.lecture.findUnique({
             where: { id: lectureId },
             include: { section: { include: { course: true } } },
         });
         if (!lecture || lecture.section.course.instructorId !== instructorId) {
             throw new Error('Lecture not found or access denied');
         }
-        await prisma.lecture.delete({ where: { id: lectureId } });
+        await db_1.prisma.lecture.delete({ where: { id: lectureId } });
         return { success: true };
     }
     /**
      * Delete a course. Only allowed if there are no ACTIVE enrollments. Verifies instructor ownership.
      */
     static async deleteCourse(courseId, instructorId) {
-        const course = await prisma.course.findUnique({ where: { id: courseId } });
+        const course = await db_1.prisma.course.findUnique({ where: { id: courseId } });
         if (!course || course.instructorId !== instructorId) {
             throw new Error('Course not found or access denied');
         }
-        const activeEnrollments = await prisma.enrollment.count({
+        const activeEnrollments = await db_1.prisma.enrollment.count({
             where: { courseId, status: 'ACTIVE' },
         });
         if (activeEnrollments > 0) {
             throw new Error('Cannot delete course with active enrollments');
         }
-        await prisma.course.delete({ where: { id: courseId } });
+        await db_1.prisma.course.delete({ where: { id: courseId } });
         return { success: true };
     }
     /**
      * Get detailed analytics for a single course. Verifies instructor ownership.
      */
     static async getCourseAnalytics(courseId, instructorId) {
-        const course = await prisma.course.findUnique({ where: { id: courseId } });
+        const course = await db_1.prisma.course.findUnique({ where: { id: courseId } });
         if (!course || course.instructorId !== instructorId) {
             throw new Error('Course not found or access denied');
         }
         // Total enrollments
-        const totalEnrollments = await prisma.enrollment.count({
+        const totalEnrollments = await db_1.prisma.enrollment.count({
             where: { courseId, status: 'ACTIVE' },
         });
         // Total revenue
-        const revenueResult = await prisma.enrollment.aggregate({
+        const revenueResult = await db_1.prisma.enrollment.aggregate({
             where: { courseId, status: 'ACTIVE' },
             _sum: { paidAmount: true },
         });
         const totalRevenue = Number(revenueResult._sum.paidAmount ?? 0);
         // Average rating and review count
-        const ratingResult = await prisma.review.aggregate({
+        const ratingResult = await db_1.prisma.review.aggregate({
             where: { courseId, isHidden: false },
             _avg: { rating: true },
             _count: { rating: true },
@@ -215,7 +218,7 @@ export class InstructorService {
         // Enrollment trend: last 30 days grouped by day
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const enrollmentTrend = await prisma.$queryRaw `
+        const enrollmentTrend = await db_1.prisma.$queryRaw `
       SELECT DATE("createdAt") as date, COUNT(*)::bigint as count
       FROM "Enrollment"
       WHERE "courseId" = ${courseId}
@@ -225,15 +228,15 @@ export class InstructorService {
       ORDER BY date ASC
     `;
         // Lecture completion rates
-        const lectures = await prisma.lecture.findMany({
+        const lectures = await db_1.prisma.lecture.findMany({
             where: { section: { courseId } },
             select: { id: true, title: true },
         });
         const completionRates = await Promise.all(lectures.map(async (lecture) => {
-            const totalProgress = await prisma.lectureProgress.count({
+            const totalProgress = await db_1.prisma.lectureProgress.count({
                 where: { lectureId: lecture.id },
             });
-            const completedProgress = await prisma.lectureProgress.count({
+            const completedProgress = await db_1.prisma.lectureProgress.count({
                 where: { lectureId: lecture.id, isCompleted: true },
             });
             return {
@@ -261,33 +264,33 @@ export class InstructorService {
      * Submit a course for review. Only allowed if currently DRAFT.
      */
     static async submitForReview(courseId, instructorId) {
-        const course = await prisma.course.findUnique({ where: { id: courseId } });
+        const course = await db_1.prisma.course.findUnique({ where: { id: courseId } });
         if (!course || course.instructorId !== instructorId) {
             throw new Error('Course not found or access denied');
         }
         if (course.status !== 'DRAFT') {
             throw new Error('Only DRAFT courses can be submitted for review');
         }
-        return prisma.course.update({
+        return db_1.prisma.course.update({
             where: { id: courseId },
             data: { status: 'UNDER_REVIEW' },
         });
     }
     static async createSection(instructorId, courseId, title) {
-        const course = await prisma.course.findUnique({ where: { id: courseId }, include: { sections: true } });
+        const course = await db_1.prisma.course.findUnique({ where: { id: courseId }, include: { sections: true } });
         if (!course || course.instructorId !== instructorId)
             throw new Error('Access denied');
         const order = course.sections.length;
-        return prisma.section.create({
+        return db_1.prisma.section.create({
             data: { courseId, title, order }
         });
     }
     static async createLecture(instructorId, sectionId, title, type) {
-        const section = await prisma.section.findUnique({ where: { id: sectionId }, include: { course: true, lectures: true } });
+        const section = await db_1.prisma.section.findUnique({ where: { id: sectionId }, include: { course: true, lectures: true } });
         if (!section || section.course.instructorId !== instructorId)
             throw new Error('Access denied');
         const order = section.lectures.length;
-        return prisma.lecture.create({
+        return db_1.prisma.lecture.create({
             data: { sectionId, title, type, order }
         });
     }
@@ -296,13 +299,13 @@ export class InstructorService {
      */
     static async submitApplication(userId, motivation, expertise) {
         // Check no PENDING application exists for this user
-        const existing = await prisma.instructorApplication.findFirst({
+        const existing = await db_1.prisma.instructorApplication.findFirst({
             where: { userId, status: 'PENDING' },
         });
         if (existing) {
             throw new Error('You already have a pending instructor application');
         }
-        return prisma.instructorApplication.create({
+        return db_1.prisma.instructorApplication.create({
             data: { userId, motivation, expertise },
         });
     }
@@ -311,14 +314,14 @@ export class InstructorService {
      */
     static async getAnalytics(instructorId) {
         // Total enrollments across all courses
-        const totalEnrollments = await prisma.enrollment.count({
+        const totalEnrollments = await db_1.prisma.enrollment.count({
             where: {
                 course: { instructorId },
                 status: 'ACTIVE',
             },
         });
         // Total revenue (sum of paidAmount from ACTIVE enrollments)
-        const revenueResult = await prisma.enrollment.aggregate({
+        const revenueResult = await db_1.prisma.enrollment.aggregate({
             where: {
                 course: { instructorId },
                 status: 'ACTIVE',
@@ -327,13 +330,13 @@ export class InstructorService {
         });
         const totalRevenue = revenueResult._sum.paidAmount ?? 0;
         // Average rating across courses
-        const ratingResult = await prisma.course.aggregate({
+        const ratingResult = await db_1.prisma.course.aggregate({
             where: { instructorId, status: 'PUBLISHED' },
             _avg: { averageRating: true },
         });
         const averageRating = ratingResult._avg.averageRating ?? 0;
         // Total offline downloads
-        const totalDownloads = await prisma.offlineDownload.count({
+        const totalDownloads = await db_1.prisma.offlineDownload.count({
             where: {
                 enrollment: {
                     course: { instructorId },
@@ -345,7 +348,7 @@ export class InstructorService {
         const now = new Date();
         const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const thisMonthRev = await prisma.enrollment.aggregate({
+        const thisMonthRev = await db_1.prisma.enrollment.aggregate({
             where: {
                 course: { instructorId },
                 status: 'ACTIVE',
@@ -353,7 +356,7 @@ export class InstructorService {
             },
             _sum: { paidAmount: true },
         });
-        const lastMonthRev = await prisma.enrollment.aggregate({
+        const lastMonthRev = await db_1.prisma.enrollment.aggregate({
             where: {
                 course: { instructorId },
                 status: 'ACTIVE',
@@ -362,7 +365,7 @@ export class InstructorService {
             _sum: { paidAmount: true },
         });
         // Recent enrollments for activity feed
-        const recentEnrollmentsRaw = await prisma.enrollment.findMany({
+        const recentEnrollmentsRaw = await db_1.prisma.enrollment.findMany({
             where: { course: { instructorId }, status: 'ACTIVE' },
             orderBy: { createdAt: 'desc' },
             take: 10,
@@ -372,7 +375,7 @@ export class InstructorService {
             },
         });
         const recentEnrollments = recentEnrollmentsRaw.map((e) => {
-            const name = e.user.profile?.displayName || e.user.email.split('@')[0];
+            const name = e.user.profile?.displayName || (e.user.email ? e.user.email.split('@')[0] : e.user.phone) || 'Student';
             const parts = name.split(' ');
             const short = parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : parts[0];
             const ms = Date.now() - new Date(e.createdAt).getTime();
@@ -387,10 +390,15 @@ export class InstructorService {
             return { studentName: short, courseTitle: e.course.title, timeAgo };
         });
         // Unanswered Q&A count
-        const unansweredQACount = await prisma.question.count({
+        const instructorLectures = await db_1.prisma.lecture.findMany({
+            where: { section: { course: { instructorId } } },
+            select: { id: true }
+        });
+        const lectureIds = instructorLectures.map(l => l.id);
+        const unansweredQACount = await db_1.prisma.question.count({
             where: {
-                lecture: { section: { course: { instructorId } } },
-                isAnswered: false,
+                lectureId: { in: lectureIds },
+                answers: { none: {} },
             },
         });
         // Monthly revenue breakdown (last 12 months)
@@ -398,7 +406,7 @@ export class InstructorService {
         for (let i = 11; i >= 0; i--) {
             const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-            const monthRev = await prisma.enrollment.aggregate({
+            const monthRev = await db_1.prisma.enrollment.aggregate({
                 where: {
                     course: { instructorId },
                     status: 'ACTIVE',
@@ -429,12 +437,12 @@ export class InstructorService {
      * Reorder sections within a course.
      */
     static async reorderSections(instructorId, courseId, sectionIds) {
-        const course = await prisma.course.findUnique({ where: { id: courseId } });
+        const course = await db_1.prisma.course.findUnique({ where: { id: courseId } });
         if (!course || course.instructorId !== instructorId) {
             throw new Error('Course not found or access denied');
         }
         // Update order for each section in a transaction
-        await prisma.$transaction(sectionIds.map((id, index) => prisma.section.update({
+        await db_1.prisma.$transaction(sectionIds.map((id, index) => db_1.prisma.section.update({
             where: { id },
             data: { order: index },
         })));
@@ -444,7 +452,7 @@ export class InstructorService {
      * Reorder lectures within a section.
      */
     static async reorderLectures(instructorId, sectionId, lectureIds) {
-        const section = await prisma.section.findUnique({
+        const section = await db_1.prisma.section.findUnique({
             where: { id: sectionId },
             include: { course: true },
         });
@@ -452,10 +460,11 @@ export class InstructorService {
             throw new Error('Section not found or access denied');
         }
         // Update order for each lecture in a transaction
-        await prisma.$transaction(lectureIds.map((id, index) => prisma.lecture.update({
+        await db_1.prisma.$transaction(lectureIds.map((id, index) => db_1.prisma.lecture.update({
             where: { id },
             data: { order: index },
         })));
         return { success: true };
     }
 }
+exports.InstructorService = InstructorService;

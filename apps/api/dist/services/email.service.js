@@ -1,10 +1,13 @@
-import { Resend } from 'resend';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.emailService = void 0;
+const resend_1 = require("resend");
 const FROM = 'FarmWise <no-reply@myfarmwise.xyz>';
 // Lazy-init: Resend client created on first use so dotenv has loaded by then
 let _resend = null;
 function getResend() {
     if (!_resend) {
-        _resend = new Resend(process.env.RESEND_API_KEY);
+        _resend = new resend_1.Resend(process.env.RESEND_API_KEY);
     }
     return _resend;
 }
@@ -44,7 +47,7 @@ function layout(content) {
 </body>
 </html>`;
 }
-export const emailService = {
+exports.emailService = {
     async sendVerificationEmail(to, token) {
         const verifyUrl = `${process.env.FRONTEND_URL}/verify?token=${token}`;
         await send({

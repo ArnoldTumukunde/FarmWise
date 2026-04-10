@@ -1,20 +1,23 @@
-import { prisma } from '@farmwise/db';
-export class ProfileService {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ProfileService = void 0;
+const db_1 = require("@farmwise/db");
+class ProfileService {
     /**
      * Get the current user's full profile.
      */
     static async getMyProfile(userId) {
-        const profile = await prisma.profile.findUnique({
+        const profile = await db_1.prisma.profile.findUnique({
             where: { userId },
         });
         // Fetch user's email and phone so the frontend can display them
-        const user = await prisma.user.findUnique({
+        const user = await db_1.prisma.user.findUnique({
             where: { id: userId },
             select: { email: true, phone: true },
         });
         if (!profile) {
             // Auto-create a minimal profile if none exists
-            const created = await prisma.profile.create({
+            const created = await db_1.prisma.profile.create({
                 data: { userId, displayName: 'User' },
             });
             return { ...created, email: user?.email ?? null, phone: user?.phone ?? null };
@@ -25,7 +28,7 @@ export class ProfileService {
      * Update the current user's profile.
      */
     static async updateMyProfile(userId, data) {
-        return prisma.profile.upsert({
+        return db_1.prisma.profile.upsert({
             where: { userId },
             update: {
                 ...(data.displayName !== undefined && { displayName: data.displayName }),
@@ -52,7 +55,7 @@ export class ProfileService {
      * Get another user's public profile (limited fields).
      */
     static async getPublicProfile(userId) {
-        const profile = await prisma.profile.findUnique({
+        const profile = await db_1.prisma.profile.findUnique({
             where: { userId },
             select: {
                 displayName: true,
@@ -68,7 +71,7 @@ export class ProfileService {
             throw new Error('Profile not found');
         }
         // Also fetch user role for context (e.g., instructor badge)
-        const user = await prisma.user.findUnique({
+        const user = await db_1.prisma.user.findUnique({
             where: { id: userId },
             select: { role: true, createdAt: true },
         });
@@ -79,3 +82,4 @@ export class ProfileService {
         };
     }
 }
+exports.ProfileService = ProfileService;

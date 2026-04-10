@@ -1,7 +1,10 @@
-import { storageService } from '../services/cloudinary.service';
-import { prisma } from '@farmwise/db';
-import { v2 as cloudinary } from 'cloudinary';
-export const getUploadSignature = async (req, res) => {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.handleVideoReadyWebhook = exports.getUploadSignature = void 0;
+const cloudinary_service_1 = require("../services/cloudinary.service");
+const db_1 = require("@farmwise/db");
+const cloudinary_1 = require("cloudinary");
+const getUploadSignature = async (req, res) => {
     try {
         // Support both GET query params and POST body
         const folder = req.query.folder || req.body?.folder;
@@ -13,7 +16,7 @@ export const getUploadSignature = async (req, res) => {
         if (!openFolders.includes(folder) && req.user.role !== 'INSTRUCTOR' && req.user.role !== 'ADMIN') {
             return res.status(403).json({ error: 'Instructor access required' });
         }
-        const signatureData = storageService.generateUploadSignature(folder, resourceType);
+        const signatureData = cloudinary_service_1.storageService.generateUploadSignature(folder, resourceType);
         res.json({
             ...signatureData,
             apiKey: signatureData.api_key,
@@ -24,7 +27,8 @@ export const getUploadSignature = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-export const handleVideoReadyWebhook = async (req, res) => {
+exports.getUploadSignature = getUploadSignature;
+const handleVideoReadyWebhook = async (req, res) => {
     try {
         const { public_id, asset_id, secure_url, eager } = req.body;
         // In production, we should verify the X-Cld-Signature header to ensure the webhook came from Cloudinary.
@@ -34,7 +38,7 @@ export const handleVideoReadyWebhook = async (req, res) => {
             return res.status(401).json({ error: 'Missing Cloudinary signature headers' });
         }
         const bodyStr = req.rawBody.toString('utf8');
-        const isValid = cloudinary.utils.verifyNotificationSignature(bodyStr, parseInt(timestamp, 10), signature, 7200 // valid for 2 hours
+        const isValid = cloudinary_1.v2.utils.verifyNotificationSignature(bodyStr, parseInt(timestamp, 10), signature, 7200 // valid for 2 hours
         );
         if (!isValid) {
             console.error('Invalid Cloudinary Signature');
@@ -43,7 +47,7 @@ export const handleVideoReadyWebhook = async (req, res) => {
         if (!public_id)
             return res.status(400).json({ error: 'Missing public_id' });
         // Update the lecture that matches this videoPublicId
-        const lecture = await prisma.lecture.findFirst({
+        const lecture = await db_1.prisma.lecture.findFirst({
             where: { videoPublicId: public_id }
         });
         if (lecture) {
@@ -54,11 +58,11 @@ export const handleVideoReadyWebhook = async (req, res) => {
                 if (m3u8Transform)
                     hlsUrl = m3u8Transform.secure_url;
             }
-            await prisma.lecture.update({
+            await db_1.prisma.lecture.update({
                 where: { id: lecture.id },
                 data: {
                     videoStatus: 'READY',
-                    hlsUrl: hlsUrl || storageService.getHlsUrl(public_id),
+                    hlsUrl: hlsUrl || cloudinary_service_1.storageService.getHlsUrl(public_id),
                 }
             });
         }
@@ -69,3 +73,4 @@ export const handleVideoReadyWebhook = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+exports.handleVideoReadyWebhook = handleVideoReadyWebhook;

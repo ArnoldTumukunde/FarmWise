@@ -1,19 +1,23 @@
-import { CourseService } from '../services/course.service';
-import { prisma } from '@farmwise/db';
-import { storageService } from '../services/cloudinary.service';
-export const listCourses = async (req, res) => {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getPreviewUrl = exports.getFeaturedCollection = exports.getTrendingCourses = exports.getRelatedCourses = exports.listCategories = exports.getCourse = exports.listCourses = void 0;
+const course_service_1 = require("../services/course.service");
+const db_1 = require("@farmwise/db");
+const cloudinary_service_1 = require("../services/cloudinary.service");
+const listCourses = async (req, res) => {
     try {
-        const result = await CourseService.listCatalog(req.query);
+        const result = await course_service_1.CourseService.listCatalog(req.query);
         res.json(result);
     }
     catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
-export const getCourse = async (req, res) => {
+exports.listCourses = listCourses;
+const getCourse = async (req, res) => {
     try {
         const { idOrSlug } = req.params;
-        const course = await CourseService.getPublicCourseDetails(idOrSlug);
+        const course = await course_service_1.CourseService.getPublicCourseDetails(idOrSlug);
         if (!course) {
             return res.status(404).json({ error: 'Course not found' });
         }
@@ -23,52 +27,57 @@ export const getCourse = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-export const listCategories = async (req, res) => {
+exports.getCourse = getCourse;
+const listCategories = async (req, res) => {
     try {
-        const categories = await CourseService.getCategories();
+        const categories = await course_service_1.CourseService.getCategories();
         res.json({ categories });
     }
     catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
-export const getRelatedCourses = async (req, res) => {
+exports.listCategories = listCategories;
+const getRelatedCourses = async (req, res) => {
     try {
         const { idOrSlug } = req.params;
-        const courses = await CourseService.getRelatedCourses(idOrSlug);
+        const courses = await course_service_1.CourseService.getRelatedCourses(idOrSlug);
         res.json({ courses });
     }
     catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
+exports.getRelatedCourses = getRelatedCourses;
 /**
  * Public endpoint: get a signed video URL for a preview lecture.
  * No authentication required — only works for lectures marked as isPreview.
  */
-export const getTrendingCourses = async (req, res) => {
+const getTrendingCourses = async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 8;
-        const courses = await CourseService.getTrendingCourses(limit);
+        const courses = await course_service_1.CourseService.getTrendingCourses(limit);
         res.json({ courses });
     }
     catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
-export const getFeaturedCollection = async (req, res) => {
+exports.getTrendingCourses = getTrendingCourses;
+const getFeaturedCollection = async (req, res) => {
     try {
-        const collection = await CourseService.getFeaturedCollection();
+        const collection = await course_service_1.CourseService.getFeaturedCollection();
         res.json(collection);
     }
     catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
-export const getPreviewUrl = async (req, res) => {
+exports.getFeaturedCollection = getFeaturedCollection;
+const getPreviewUrl = async (req, res) => {
     try {
         const { lectureId } = req.params;
-        const lecture = await prisma.lecture.findUnique({
+        const lecture = await db_1.prisma.lecture.findUnique({
             where: { id: lectureId },
         });
         if (!lecture) {
@@ -80,10 +89,11 @@ export const getPreviewUrl = async (req, res) => {
         if (!lecture.videoPublicId) {
             return res.status(404).json({ error: 'No video available for this lecture' });
         }
-        const url = storageService.getSignedVideoUrl(lecture.videoPublicId, 300);
+        const url = cloudinary_service_1.storageService.getSignedVideoUrl(lecture.videoPublicId, 300);
         res.json({ url });
     }
     catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
+exports.getPreviewUrl = getPreviewUrl;

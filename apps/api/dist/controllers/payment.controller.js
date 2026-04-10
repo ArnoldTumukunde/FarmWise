@@ -1,13 +1,16 @@
-import { stripe, toStripeAmount } from '../services/stripe.service';
-import { EnrollmentService } from '../services/enrollment.service';
-import { prisma } from '@farmwise/db';
-export const createCheckoutSession = async (req, res) => {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.validateCoupon = exports.handleStripeWebhook = exports.createCheckoutSession = void 0;
+const stripe_service_1 = require("../services/stripe.service");
+const enrollment_service_1 = require("../services/enrollment.service");
+const db_1 = require("@farmwise/db");
+const createCheckoutSession = async (req, res) => {
     try {
         const { courseId, couponCode } = req.body;
         const userId = req.user.id;
         if (!courseId)
             return res.status(400).json({ error: 'courseId is required' });
-        const course = await prisma.course.findUnique({ where: { id: courseId } });
+        const course = await db_1.prisma.course.findUnique({ where: { id: courseId } });
         if (!course || course.status !== 'PUBLISHED') {
             return res.status(404).json({ error: 'Course not found or unavailable' });
         }
@@ -16,7 +19,7 @@ export const createCheckoutSession = async (req, res) => {
         // If a coupon code is provided, validate and calculate discounted price
         if (couponCode) {
             const normalizedCode = couponCode.toUpperCase();
-            const coupon = await prisma.coupon.findUnique({
+            const coupon = await db_1.prisma.coupon.findUnique({
                 where: { code: normalizedCode },
             });
             if (!coupon) {
@@ -46,7 +49,7 @@ export const createCheckoutSession = async (req, res) => {
             finalPrice = Math.max(0, finalPrice - discountAmount);
             appliedCouponId = coupon.id;
             // Atomic increment usedCount
-            await prisma.$executeRaw `
+            await db_1.prisma.$executeRaw `
         UPDATE "Coupon"
         SET "usedCount" = "usedCount" + 1
         WHERE id = ${coupon.id}
@@ -55,11 +58,11 @@ export const createCheckoutSession = async (req, res) => {
         }
         if (finalPrice === 0) {
             // Fast-track free courses (or 100% discount)
-            await EnrollmentService.enrollFreeCourse(userId, courseId);
+            await enrollment_service_1.EnrollmentService.enrollFreeCourse(userId, courseId);
             return res.json({ enrolled: true, courseSlug: course.slug });
         }
         // Create PENDING enrollment before Stripe session
-        const { alreadyActive } = await EnrollmentService.createPendingEnrollment(userId, courseId);
+        const { alreadyActive } = await enrollment_service_1.EnrollmentService.createPendingEnrollment(userId, courseId);
         if (alreadyActive) {
             return res.json({ enrolled: true, courseSlug: course.slug });
         }
@@ -68,9 +71,9 @@ export const createCheckoutSession = async (req, res) => {
         const cancelUrl = `${FRONTEND_URL}/course/${course.slug}?canceled=true`;
         // Create Stripe checkout session with the (possibly discounted) price
         const currency = 'ugx';
-        const unitAmount = toStripeAmount(finalPrice, currency);
+        const unitAmount = (0, stripe_service_1.toStripeAmount)(finalPrice, currency);
         // Check if instructor has Stripe Connect set up for revenue split
-        const instructorProfile = await prisma.profile.findUnique({
+        const instructorProfile = await db_1.prisma.profile.findUnique({
             where: { userId: course.instructorId },
             select: { stripeConnectAccountId: true, stripeConnectStatus: true },
         });
@@ -106,7 +109,7 @@ export const createCheckoutSession = async (req, res) => {
         };
         // Apply 30% platform fee and route remainder to instructor via Connect
         if (hasConnect) {
-            const applicationFee = toStripeAmount(Math.round(finalPrice * 0.3), currency);
+            const applicationFee = (0, stripe_service_1.toStripeAmount)(Math.round(finalPrice * 0.3), currency);
             sessionParams.payment_intent_data = {
                 application_fee_amount: applicationFee,
                 transfer_data: {
@@ -114,16 +117,17 @@ export const createCheckoutSession = async (req, res) => {
                 },
             };
         }
-        const session = await stripe.checkout.sessions.create(sessionParams);
+        const session = await stripe_service_1.stripe.checkout.sessions.create(sessionParams);
         // Store stripeSessionId on the enrollment
-        await EnrollmentService.setStripeSessionId(userId, courseId, session.id);
+        await enrollment_service_1.EnrollmentService.setStripeSessionId(userId, courseId, session.id);
         res.json({ url: session.url });
     }
     catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
-export const handleStripeWebhook = async (req, res) => {
+exports.createCheckoutSession = createCheckoutSession;
+const handleStripeWebhook = async (req, res) => {
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!sig || !webhookSecret) {
@@ -133,7 +137,7 @@ export const handleStripeWebhook = async (req, res) => {
     let event;
     try {
         // req.rawBody must be the raw buffer captured by express.json.verify
-        event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
+        event = stripe_service_1.stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
     }
     catch (err) {
         console.error(`Webhook Error: ${err.message}`);
@@ -141,7 +145,7 @@ export const handleStripeWebhook = async (req, res) => {
     }
     // Idempotency check with raw SQL INSERT ... ON CONFLICT DO NOTHING
     // This guarantees atomic lock creation even with concurrent webhooks
-    const insertCount = await prisma.$executeRaw `
+    const insertCount = await db_1.prisma.$executeRaw `
     INSERT INTO "ProcessedStripeEvent" (id, "processedAt")
     VALUES (${event.id}, NOW())
     ON CONFLICT (id) DO NOTHING;
@@ -154,12 +158,12 @@ export const handleStripeWebhook = async (req, res) => {
     switch (event.type) {
         case 'checkout.session.completed': {
             const session = event.data.object;
-            await EnrollmentService.activateEnrollment(session);
+            await enrollment_service_1.EnrollmentService.activateEnrollment(session);
             break;
         }
         case 'payment_intent.succeeded': {
             const paymentIntent = event.data.object;
-            await EnrollmentService.activateByPaymentIntent(paymentIntent.id);
+            await enrollment_service_1.EnrollmentService.activateByPaymentIntent(paymentIntent.id);
             break;
         }
         default:
@@ -167,14 +171,15 @@ export const handleStripeWebhook = async (req, res) => {
     }
     res.json({ received: true });
 };
-export const validateCoupon = async (req, res) => {
+exports.handleStripeWebhook = handleStripeWebhook;
+const validateCoupon = async (req, res) => {
     try {
         const { code, cartSubtotal } = req.body;
         if (!code || cartSubtotal == null) {
             return res.status(400).json({ error: 'code and cartSubtotal are required' });
         }
         const normalizedCode = code.toUpperCase();
-        const coupon = await prisma.coupon.findUnique({
+        const coupon = await db_1.prisma.coupon.findUnique({
             where: { code: normalizedCode },
         });
         if (!coupon) {
@@ -199,7 +204,7 @@ export const validateCoupon = async (req, res) => {
             discountAmount = Math.min(Number(coupon.value), subtotal);
         }
         // Atomic increment usedCount using raw SQL to prevent race conditions
-        await prisma.$executeRaw `
+        await db_1.prisma.$executeRaw `
       UPDATE "Coupon"
       SET "usedCount" = "usedCount" + 1
       WHERE id = ${coupon.id}
@@ -211,3 +216,4 @@ export const validateCoupon = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+exports.validateCoupon = validateCoupon;

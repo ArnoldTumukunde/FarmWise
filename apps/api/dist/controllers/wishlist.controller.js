@@ -1,8 +1,11 @@
-import { prisma } from '@farmwise/db';
-export const getWishlist = async (req, res) => {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.removeFromWishlist = exports.addToWishlist = exports.getWishlist = void 0;
+const db_1 = require("@farmwise/db");
+const getWishlist = async (req, res) => {
     try {
         const userId = req.user.id;
-        const items = await prisma.wishlist.findMany({
+        const items = await db_1.prisma.wishlist.findMany({
             where: { userId },
             include: {
                 course: {
@@ -38,16 +41,17 @@ export const getWishlist = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-export const addToWishlist = async (req, res) => {
+exports.getWishlist = getWishlist;
+const addToWishlist = async (req, res) => {
     try {
         const userId = req.user.id;
         const { courseId } = req.params;
         // Verify course exists
-        const course = await prisma.course.findUnique({ where: { id: courseId } });
+        const course = await db_1.prisma.course.findUnique({ where: { id: courseId } });
         if (!course) {
             return res.status(404).json({ error: 'Course not found' });
         }
-        await prisma.wishlist.upsert({
+        await db_1.prisma.wishlist.upsert({
             where: { userId_courseId: { userId, courseId } },
             create: { userId, courseId },
             update: {},
@@ -58,11 +62,12 @@ export const addToWishlist = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-export const removeFromWishlist = async (req, res) => {
+exports.addToWishlist = addToWishlist;
+const removeFromWishlist = async (req, res) => {
     try {
         const userId = req.user.id;
         const { courseId } = req.params;
-        await prisma.wishlist.deleteMany({
+        await db_1.prisma.wishlist.deleteMany({
             where: { userId, courseId },
         });
         res.json({ success: true });
@@ -71,3 +76,4 @@ export const removeFromWishlist = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+exports.removeFromWishlist = removeFromWishlist;

@@ -1,8 +1,11 @@
-import { Worker } from 'bullmq';
-import { bullmqConnection } from '../lib/redis';
-import { prisma } from '@farmwise/db';
-import { emailService } from '../services/email.service';
-export const smsServiceMock = async (to, message) => {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.notificationWorker = exports.smsServiceMock = void 0;
+const bullmq_1 = require("bullmq");
+const redis_1 = require("../lib/redis");
+const db_1 = require("@farmwise/db");
+const email_service_1 = require("../services/email.service");
+const smsServiceMock = async (to, message) => {
     console.log(`[MOCK SMS] To: ${to} | Message length: ${message.length} | Body: ${message}`);
     if (message.length > 160) {
         console.warn(`[WARNING] SMS to ${to} exceeded 160 chars!`);
@@ -10,25 +13,26 @@ export const smsServiceMock = async (to, message) => {
     // Simulate latency
     await new Promise(r => setTimeout(r, 500));
 };
-export const notificationWorker = new Worker('notifications', async (job) => {
+exports.smsServiceMock = smsServiceMock;
+exports.notificationWorker = new bullmq_1.Worker('notifications', async (job) => {
     const { userId, type, title, body, link, emailOptions, smsOptions } = job.data;
     // 1. Create In-App Notification Record
-    await prisma.notification.create({
+    await db_1.prisma.notification.create({
         data: { userId, type, title, body, link }
     });
     // 2. Send Email if available
     if (emailOptions) {
-        await emailService.sendGeneric(emailOptions.to, emailOptions.subject, emailOptions.html);
+        await email_service_1.emailService.sendGeneric(emailOptions.to, emailOptions.subject, emailOptions.html);
     }
     // 3. Send SMS if available
     if (smsOptions) {
-        await smsServiceMock(smsOptions.to, smsOptions.message);
+        await (0, exports.smsServiceMock)(smsOptions.to, smsOptions.message);
     }
     return { success: true };
-}, { connection: bullmqConnection });
-notificationWorker.on('completed', job => {
+}, { connection: redis_1.bullmqConnection });
+exports.notificationWorker.on('completed', job => {
     console.log(`Job [${job.id}] completed for User [${job.data.userId}]`);
 });
-notificationWorker.on('failed', (job, err) => {
+exports.notificationWorker.on('failed', (job, err) => {
     console.error(`Job [${job?.id}] failed:`, err);
 });

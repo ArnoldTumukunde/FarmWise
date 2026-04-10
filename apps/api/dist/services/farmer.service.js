@@ -1,5 +1,8 @@
-import { prisma } from '@farmwise/db';
-export class FarmerService {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.FarmerService = void 0;
+const db_1 = require("@farmwise/db");
+class FarmerService {
     /**
      * Weekly learning progress for the streak/goal widget.
      */
@@ -19,7 +22,7 @@ export class FarmerService {
         const todayEnd = new Date(now);
         todayEnd.setHours(23, 59, 59, 999);
         // Get all progress entries this week
-        const weekProgress = await prisma.lectureProgress.findMany({
+        const weekProgress = await db_1.prisma.lectureProgress.findMany({
             where: {
                 userId,
                 lastWatchedAt: { gte: weekStart, lte: weekEnd },
@@ -44,7 +47,7 @@ export class FarmerService {
         const checkDate = new Date(todayStart);
         for (let i = 0; i < 365; i++) {
             const dateStr = checkDate.toISOString().slice(0, 10);
-            const hasActivity = await prisma.lectureProgress.count({
+            const hasActivity = await db_1.prisma.lectureProgress.count({
                 where: {
                     userId,
                     lastWatchedAt: {
@@ -81,7 +84,7 @@ export class FarmerService {
      */
     static async getHomepageRecommendations(userId) {
         // Find user's most-enrolled category
-        const enrollments = await prisma.enrollment.findMany({
+        const enrollments = await db_1.prisma.enrollment.findMany({
             where: { userId, status: 'ACTIVE' },
             include: { course: { select: { categoryId: true } } },
         });
@@ -96,8 +99,8 @@ export class FarmerService {
         if (categoryCounts.size > 0) {
             const topCatId = [...categoryCounts.entries()].sort((a, b) => b[1] - a[1])[0][0];
             const enrolledCourseIds = enrollments.map(e => e.courseId);
-            const cat = await prisma.category.findUnique({ where: { id: topCatId } });
-            const courses = await prisma.course.findMany({
+            const cat = await db_1.prisma.category.findUnique({ where: { id: topCatId } });
+            const courses = await db_1.prisma.course.findMany({
                 where: {
                     categoryId: topCatId,
                     status: 'PUBLISHED',
@@ -132,17 +135,17 @@ export class FarmerService {
      * "Because you enrolled in X" — related courses from same category.
      */
     static async getBecauseYouEnrolled(userId, courseId, limit = 8) {
-        const course = await prisma.course.findUnique({
+        const course = await db_1.prisma.course.findUnique({
             where: { id: courseId },
             select: { categoryId: true },
         });
         if (!course?.categoryId)
             return [];
-        const enrolledIds = (await prisma.enrollment.findMany({
+        const enrolledIds = (await db_1.prisma.enrollment.findMany({
             where: { userId, status: 'ACTIVE' },
             select: { courseId: true },
         })).map(e => e.courseId);
-        return prisma.course.findMany({
+        return db_1.prisma.course.findMany({
             where: {
                 categoryId: course.categoryId,
                 status: 'PUBLISHED',
@@ -160,7 +163,7 @@ export class FarmerService {
      * Recommended topics based on enrolled categories.
      */
     static async getRecommendedTopics(userId, limit = 10) {
-        const enrollments = await prisma.enrollment.findMany({
+        const enrollments = await db_1.prisma.enrollment.findMany({
             where: { userId, status: 'ACTIVE' },
             include: {
                 course: {
@@ -180,7 +183,7 @@ export class FarmerService {
         }
         // If not enough topics, add popular categories
         if (topicSet.size < limit) {
-            const cats = await prisma.category.findMany({
+            const cats = await db_1.prisma.category.findMany({
                 where: { parentId: null },
                 select: { name: true },
                 take: limit,
@@ -194,7 +197,7 @@ export class FarmerService {
      * Farmer stats for dashboard.
      */
     static async getStats(userId) {
-        const enrollments = await prisma.enrollment.findMany({
+        const enrollments = await db_1.prisma.enrollment.findMany({
             where: { userId, status: 'ACTIVE' },
             include: {
                 course: {
@@ -206,7 +209,7 @@ export class FarmerService {
         });
         const enrollmentCount = enrollments.length;
         // Hours learned
-        const totalWatched = await prisma.lectureProgress.aggregate({
+        const totalWatched = await db_1.prisma.lectureProgress.aggregate({
             where: { userId },
             _sum: { watchedSeconds: true },
         });
@@ -217,7 +220,7 @@ export class FarmerService {
             const totalLectures = enrollment.course.sections.reduce((sum, s) => sum + s.lectures.length, 0);
             if (totalLectures === 0)
                 continue;
-            const completed = await prisma.lectureProgress.count({
+            const completed = await db_1.prisma.lectureProgress.count({
                 where: { enrollmentId: enrollment.id, isCompleted: true },
             });
             if (completed >= totalLectures)
@@ -228,3 +231,4 @@ export class FarmerService {
         return { enrollmentCount, hoursLearned, certificateCount, completedCount };
     }
 }
+exports.FarmerService = FarmerService;

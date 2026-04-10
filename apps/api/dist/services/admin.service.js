@@ -1,41 +1,77 @@
-import { prisma } from '@farmwise/db';
-import { stripe } from './stripe.service';
-import { NotificationService } from './notification.service';
-export class AdminService {
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AdminService = void 0;
+const db_1 = require("@farmwise/db");
+const stripe_service_1 = require("./stripe.service");
+const notification_service_1 = require("./notification.service");
+class AdminService {
     // --- DASHBOARD KPIs ---
     static async getDashboardKPIs() {
-        const totalUsers = await prisma.user.count();
-        const activeCourses = await prisma.course.count({ where: { status: 'PUBLISHED' } });
+        const totalUsers = await db_1.prisma.user.count();
+        const activeCourses = await db_1.prisma.course.count({ where: { status: 'PUBLISHED' } });
         // Sum of all paid enrollments
-        const totalRevenueResult = await prisma.enrollment.aggregate({
+        const totalRevenueResult = await db_1.prisma.enrollment.aggregate({
             _sum: { paidAmount: true },
             where: { status: 'ACTIVE' }
         });
         const totalRevenue = totalRevenueResult._sum.paidAmount || 0;
-        const totalDownloads = await prisma.offlineDownload.count({
+        const totalDownloads = await db_1.prisma.offlineDownload.count({
             where: { status: 'DOWNLOADED' }
         });
         // Get 5 most recent pending applications
-        const pendingApplications = await prisma.instructorApplication.findMany({
+        const pendingApplications = await db_1.prisma.instructorApplication.findMany({
             where: { status: 'PENDING' },
             include: { user: { select: { profile: true, email: true } } },
             orderBy: { createdAt: 'desc' },
             take: 5
         });
-        const recentUsers = await prisma.user.findMany({
+        const recentUsers = await db_1.prisma.user.findMany({
             include: { profile: true },
             orderBy: { createdAt: 'desc' },
             take: 5
         });
-        const recentCourses = await prisma.course.findMany({
+        const recentCourses = await db_1.prisma.course.findMany({
             include: { instructor: { select: { profile: true } } },
             orderBy: { createdAt: 'desc' },
             take: 5
         });
-        const pendingCoursesCount = await prisma.course.count({
+        const pendingCoursesCount = await db_1.prisma.course.count({
             where: { status: 'UNDER_REVIEW' }
         });
-        const flaggedReviewsCount = await prisma.review.count({
+        const flaggedReviewsCount = await db_1.prisma.review.count({
             where: { rating: 1, isHidden: false }
         });
         return {
@@ -54,17 +90,17 @@ export class AdminService {
     static async listUsers(page = 1, limit = 20) {
         const skip = (page - 1) * limit;
         const [users, total] = await Promise.all([
-            prisma.user.findMany({
+            db_1.prisma.user.findMany({
                 skip, take: limit,
                 include: { profile: true },
                 orderBy: { createdAt: 'desc' }
             }),
-            prisma.user.count()
+            db_1.prisma.user.count()
         ]);
         return { users, total, page, totalPages: Math.ceil(total / limit) };
     }
     static async getInstructorApplications(status) {
-        return prisma.instructorApplication.findMany({
+        return db_1.prisma.instructorApplication.findMany({
             where: status ? { status } : undefined,
             include: { user: { select: { profile: true, email: true } } },
             orderBy: { createdAt: 'desc' }
@@ -72,7 +108,7 @@ export class AdminService {
     }
     static async reviewInstructorApplication(adminId, applicationId, action, note) {
         const status = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
-        return prisma.$transaction(async (tx) => {
+        return db_1.prisma.$transaction(async (tx) => {
             const app = await tx.instructorApplication.update({
                 where: { id: applicationId },
                 data: { status, reviewedBy: adminId, reviewNote: note }
@@ -87,20 +123,20 @@ export class AdminService {
         });
     }
     static async updateUserRole(userId, role) {
-        return prisma.user.update({
+        return db_1.prisma.user.update({
             where: { id: userId },
             data: { role }
         });
     }
     static async suspendUser(userId, suspended) {
-        return prisma.user.update({
+        return db_1.prisma.user.update({
             where: { id: userId },
             data: { isVerified: !suspended }
         });
     }
     static async deleteUser(userId) {
         // Check if user is an instructor with active enrollments
-        const activeEnrollments = await prisma.enrollment.count({
+        const activeEnrollments = await db_1.prisma.enrollment.count({
             where: {
                 course: { instructorId: userId },
                 status: 'ACTIVE'
@@ -109,7 +145,7 @@ export class AdminService {
         if (activeEnrollments > 0) {
             throw new Error('Cannot delete user: they have active enrollments as an instructor');
         }
-        return prisma.user.delete({ where: { id: userId } });
+        return db_1.prisma.user.delete({ where: { id: userId } });
     }
     // --- COURSES ---
     static async listAllCourses(query) {
@@ -126,19 +162,19 @@ export class AdminService {
             ];
         }
         const [courses, total] = await Promise.all([
-            prisma.course.findMany({
+            db_1.prisma.course.findMany({
                 where,
                 skip,
                 take: limit,
                 include: { instructor: { select: { profile: true } } },
                 orderBy: { createdAt: 'desc' }
             }),
-            prisma.course.count({ where })
+            db_1.prisma.course.count({ where })
         ]);
         return { courses, total, page, totalPages: Math.ceil(total / limit) };
     }
     static async deleteCourse(courseId) {
-        return prisma.$transaction(async (tx) => {
+        return db_1.prisma.$transaction(async (tx) => {
             await tx.enrollment.deleteMany({ where: { courseId } });
             const sections = await tx.section.findMany({ where: { courseId }, select: { id: true } });
             const sectionIds = sections.map((s) => s.id);
@@ -149,13 +185,13 @@ export class AdminService {
         });
     }
     static async unpublishCourse(courseId) {
-        return prisma.course.update({
+        return db_1.prisma.course.update({
             where: { id: courseId },
             data: { status: 'DRAFT' }
         });
     }
     static async listCoursesForReview() {
-        return prisma.course.findMany({
+        return db_1.prisma.course.findMany({
             where: { status: 'UNDER_REVIEW' },
             include: { instructor: { select: { profile: true } } },
             orderBy: { updatedAt: 'desc' }
@@ -163,7 +199,7 @@ export class AdminService {
     }
     static async moderateCourse(courseId, action) {
         const status = action === 'APPROVE' ? 'PUBLISHED' : 'DRAFT';
-        return prisma.course.update({
+        return db_1.prisma.course.update({
             where: { id: courseId },
             data: {
                 status,
@@ -172,7 +208,7 @@ export class AdminService {
         });
     }
     static async toggleCourseFeatured(courseId, isFeatured) {
-        return prisma.course.update({
+        return db_1.prisma.course.update({
             where: { id: courseId },
             data: { isFeatured }
         });
@@ -181,7 +217,7 @@ export class AdminService {
     static async listFlaggedReviews() {
         // Simple heuristic: 1-star reviews that might need moderation
         // In a real app, you might have an explicit `isFlagged` boolean
-        return prisma.review.findMany({
+        return db_1.prisma.review.findMany({
             where: { rating: 1, isHidden: false },
             include: {
                 user: { select: { profile: true } },
@@ -191,17 +227,17 @@ export class AdminService {
         });
     }
     static async hideReview(reviewId, isHidden) {
-        return prisma.review.update({
+        return db_1.prisma.review.update({
             where: { id: reviewId },
             data: { isHidden }
         });
     }
     static async deleteReview(reviewId) {
-        return prisma.review.delete({ where: { id: reviewId } });
+        return db_1.prisma.review.delete({ where: { id: reviewId } });
     }
     // --- SINGLE USER DETAIL ---
     static async getUserById(userId) {
-        const user = await prisma.user.findUnique({
+        const user = await db_1.prisma.user.findUnique({
             where: { id: userId },
             include: {
                 profile: true,
@@ -229,7 +265,7 @@ export class AdminService {
     static async getReviewsForModeration(page = 1, limit = 20) {
         const skip = (page - 1) * limit;
         const [reviews, total] = await Promise.all([
-            prisma.review.findMany({
+            db_1.prisma.review.findMany({
                 skip, take: limit,
                 include: {
                     user: { select: { profile: { select: { displayName: true } }, email: true } },
@@ -237,7 +273,7 @@ export class AdminService {
                 },
                 orderBy: { createdAt: 'desc' }
             }),
-            prisma.review.count()
+            db_1.prisma.review.count()
         ]);
         return { reviews, total, page, totalPages: Math.ceil(total / limit) };
     }
@@ -245,7 +281,7 @@ export class AdminService {
     static async getQuestionsForModeration(page = 1, limit = 20) {
         const skip = (page - 1) * limit;
         const [questions, total] = await Promise.all([
-            prisma.question.findMany({
+            db_1.prisma.question.findMany({
                 skip, take: limit,
                 include: {
                     user: { select: { profile: { select: { displayName: true } }, email: true } },
@@ -253,7 +289,7 @@ export class AdminService {
                 },
                 orderBy: { createdAt: 'desc' }
             }),
-            prisma.question.count()
+            db_1.prisma.question.count()
         ]);
         return { questions, total, page, totalPages: Math.ceil(total / limit) };
     }
@@ -261,17 +297,17 @@ export class AdminService {
     static async listCoupons(page = 1, limit = 20) {
         const skip = (page - 1) * limit;
         const [coupons, total] = await Promise.all([
-            prisma.coupon.findMany({
+            db_1.prisma.coupon.findMany({
                 skip, take: limit,
                 include: { course: { select: { id: true, title: true } } },
                 orderBy: { createdAt: 'desc' }
             }),
-            prisma.coupon.count()
+            db_1.prisma.coupon.count()
         ]);
         return { coupons, total, page, totalPages: Math.ceil(total / limit) };
     }
     static async createCoupon(data) {
-        return prisma.coupon.create({
+        return db_1.prisma.coupon.create({
             data: {
                 code: data.code.toUpperCase(),
                 type: data.type,
@@ -296,13 +332,13 @@ export class AdminService {
             updateData.expiresAt = data.expiresAt ? new Date(data.expiresAt) : null;
         if (data.courseId !== undefined)
             updateData.courseId = data.courseId;
-        return prisma.coupon.update({
+        return db_1.prisma.coupon.update({
             where: { id: couponId },
             data: updateData
         });
     }
     static async deleteCoupon(couponId) {
-        return prisma.coupon.delete({ where: { id: couponId } });
+        return db_1.prisma.coupon.delete({ where: { id: couponId } });
     }
     // --- REFUNDS ---
     static async listRefunds(status, page = 1, limit = 20) {
@@ -321,7 +357,7 @@ export class AdminService {
             where.status = 'REFUNDED';
         }
         const [refunds, total] = await Promise.all([
-            prisma.enrollment.findMany({
+            db_1.prisma.enrollment.findMany({
                 where,
                 skip, take: limit,
                 include: {
@@ -330,12 +366,12 @@ export class AdminService {
                 },
                 orderBy: { createdAt: 'desc' }
             }),
-            prisma.enrollment.count({ where })
+            db_1.prisma.enrollment.count({ where })
         ]);
         return { refunds, total, page, totalPages: Math.ceil(total / limit) };
     }
     static async approveRefund(enrollmentId) {
-        const enrollment = await prisma.enrollment.findUnique({
+        const enrollment = await db_1.prisma.enrollment.findUnique({
             where: { id: enrollmentId },
             include: { course: { select: { title: true } }, user: { select: { id: true, phone: true, email: true } } }
         });
@@ -345,15 +381,15 @@ export class AdminService {
             throw new Error('Already refunded');
         // Issue Stripe refund if there was a payment
         if (enrollment.paymentIntentId) {
-            await stripe.refunds.create({ payment_intent: enrollment.paymentIntentId });
+            await stripe_service_1.stripe.refunds.create({ payment_intent: enrollment.paymentIntentId });
         }
-        const updated = await prisma.enrollment.update({
+        const updated = await db_1.prisma.enrollment.update({
             where: { id: enrollmentId },
             data: { status: 'REFUNDED', refundedAt: new Date() }
         });
         // Notify user
         try {
-            await NotificationService.notifyRefundApproved(enrollment.userId, enrollment.course.title, Number(enrollment.paidAmount), enrollment.user.phone, enrollment.user.email);
+            await notification_service_1.NotificationService.notifyRefundApproved(enrollment.userId, enrollment.course.title, Number(enrollment.paidAmount), enrollment.user.phone, enrollment.user.email);
         }
         catch (e) {
             console.error('Failed to send refund notification:', e);
@@ -362,7 +398,7 @@ export class AdminService {
     }
     static async rejectRefund(enrollmentId) {
         // For rejection, we just keep the enrollment as ACTIVE
-        const enrollment = await prisma.enrollment.findUnique({ where: { id: enrollmentId } });
+        const enrollment = await db_1.prisma.enrollment.findUnique({ where: { id: enrollmentId } });
         if (!enrollment)
             throw new Error('Enrollment not found');
         return { message: 'Refund request rejected', enrollment };
@@ -370,13 +406,13 @@ export class AdminService {
     // --- REVENUE ANALYTICS ---
     static async getRevenueAnalytics() {
         // Total revenue
-        const totalResult = await prisma.enrollment.aggregate({
+        const totalResult = await db_1.prisma.enrollment.aggregate({
             _sum: { paidAmount: true },
             where: { status: { in: ['ACTIVE', 'REFUNDED'] } }
         });
         const totalRevenue = totalResult._sum.paidAmount || 0;
         // Total refunded
-        const refundedResult = await prisma.enrollment.aggregate({
+        const refundedResult = await db_1.prisma.enrollment.aggregate({
             _sum: { paidAmount: true },
             where: { status: 'REFUNDED' }
         });
@@ -384,7 +420,7 @@ export class AdminService {
         // Net revenue
         const netRevenue = Number(totalRevenue) - Number(totalRefunded);
         // Active enrollments revenue
-        const activeResult = await prisma.enrollment.aggregate({
+        const activeResult = await db_1.prisma.enrollment.aggregate({
             _sum: { paidAmount: true },
             where: { status: 'ACTIVE' }
         });
@@ -392,7 +428,7 @@ export class AdminService {
         // Revenue by month (last 12 months)
         const twelveMonthsAgo = new Date();
         twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
-        const recentEnrollments = await prisma.enrollment.findMany({
+        const recentEnrollments = await db_1.prisma.enrollment.findMany({
             where: { status: 'ACTIVE', createdAt: { gte: twelveMonthsAgo }, paidAmount: { gt: 0 } },
             select: { paidAmount: true, createdAt: true },
             orderBy: { createdAt: 'asc' }
@@ -403,7 +439,7 @@ export class AdminService {
             monthlyRevenue[key] = (monthlyRevenue[key] || 0) + Number(e.paidAmount);
         }
         // Top courses by revenue
-        const topCourses = await prisma.enrollment.groupBy({
+        const topCourses = await db_1.prisma.enrollment.groupBy({
             by: ['courseId'],
             _sum: { paidAmount: true },
             _count: { id: true },
@@ -412,7 +448,7 @@ export class AdminService {
             take: 10
         });
         const courseIds = topCourses.map(c => c.courseId);
-        const courses = await prisma.course.findMany({
+        const courses = await db_1.prisma.course.findMany({
             where: { id: { in: courseIds } },
             select: { id: true, title: true }
         });
@@ -436,13 +472,13 @@ export class AdminService {
     static async getBroadcastHistory(page = 1, limit = 20) {
         const skip = (page - 1) * limit;
         const [broadcasts, total] = await Promise.all([
-            prisma.notification.findMany({
+            db_1.prisma.notification.findMany({
                 where: { type: 'ANNOUNCEMENT' },
                 skip, take: limit,
                 orderBy: { createdAt: 'desc' },
                 select: { id: true, title: true, body: true, createdAt: true }
             }),
-            prisma.notification.count({ where: { type: 'ANNOUNCEMENT' } })
+            db_1.prisma.notification.count({ where: { type: 'ANNOUNCEMENT' } })
         ]);
         return { broadcasts, total, page, totalPages: Math.ceil(total / limit) };
     }
@@ -457,7 +493,7 @@ export class AdminService {
         else if (recipients === 'ALL_INSTRUCTORS')
             where.role = 'INSTRUCTOR';
         // ALL_USERS or undefined → no role filter
-        const users = await prisma.user.findMany({
+        const users = await db_1.prisma.user.findMany({
             select: { id: true, email: true, phone: true },
             where,
         });
@@ -466,7 +502,7 @@ export class AdminService {
         const wantsSms = activeChannels.includes('sms');
         // 1. In-app notifications (bulk insert — fast)
         if (wantsInApp) {
-            await prisma.notification.createMany({
+            await db_1.prisma.notification.createMany({
                 data: users.map(u => ({
                     userId: u.id,
                     type: 'ANNOUNCEMENT',
@@ -478,7 +514,7 @@ export class AdminService {
         }
         // 2. Email notifications via queue
         if (wantsEmail) {
-            const { notificationQueue } = await import('../jobs/queue');
+            const { notificationQueue } = await Promise.resolve().then(() => __importStar(require('../jobs/queue')));
             const emailUsers = users.filter(u => u.email);
             for (const u of emailUsers) {
                 await notificationQueue.add('BROADCAST_EMAIL', {
@@ -496,7 +532,7 @@ export class AdminService {
         }
         // 3. SMS notifications via queue (<=160 chars enforced)
         if (wantsSms) {
-            const { notificationQueue } = await import('../jobs/queue');
+            const { notificationQueue } = await Promise.resolve().then(() => __importStar(require('../jobs/queue')));
             const smsMessage = `FarmWise: ${body}`.substring(0, 160);
             const smsUsers = users.filter(u => u.phone);
             for (const u of smsUsers) {
@@ -521,18 +557,18 @@ export class AdminService {
     }
     // --- PLATFORM SETTINGS (persisted via PlatformConfig table) ---
     static async getSettings() {
-        const { CmsService } = await import('./cms.service');
+        const { CmsService } = await Promise.resolve().then(() => __importStar(require('./cms.service')));
         return CmsService.getSettings();
     }
     static async updateSettings(section, data) {
-        const { CmsService } = await import('./cms.service');
+        const { CmsService } = await Promise.resolve().then(() => __importStar(require('./cms.service')));
         await CmsService.updateSettings(section, data);
         return CmsService.getSettings();
     }
     // --- CATEGORIES ---
     static async listCategories() {
         // Return all categories with course counts — frontend builds the tree
-        return prisma.category.findMany({
+        return db_1.prisma.category.findMany({
             include: {
                 _count: { select: { courses: true } },
                 children: {
@@ -544,7 +580,7 @@ export class AdminService {
         });
     }
     static async createCategory(data) {
-        return prisma.category.create({ data });
+        return db_1.prisma.category.create({ data });
     }
     static async updateCategory(categoryId, data) {
         const updateData = {};
@@ -560,17 +596,18 @@ export class AdminService {
             updateData.imageUrl = data.imageUrl;
         if (data.parentId !== undefined)
             updateData.parentId = data.parentId;
-        return prisma.category.update({
+        return db_1.prisma.category.update({
             where: { id: categoryId },
             data: updateData
         });
     }
     static async deleteCategory(categoryId) {
         // Check if category has courses
-        const courseCount = await prisma.course.count({ where: { categoryId } });
+        const courseCount = await db_1.prisma.course.count({ where: { categoryId } });
         if (courseCount > 0) {
             throw new Error('Cannot delete category: it has associated courses. Reassign them first.');
         }
-        return prisma.category.delete({ where: { id: categoryId } });
+        return db_1.prisma.category.delete({ where: { id: categoryId } });
     }
 }
+exports.AdminService = AdminService;

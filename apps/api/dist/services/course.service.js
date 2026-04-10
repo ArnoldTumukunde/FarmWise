@@ -1,5 +1,8 @@
-import { prisma } from '@farmwise/db';
-export class CourseService {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CourseService = void 0;
+const db_1 = require("@farmwise/db");
+class CourseService {
     /**
      * List and search courses for the catalog.
      */
@@ -10,7 +13,7 @@ export class CourseService {
         };
         if (categoryId) {
             // Include courses in this category OR any of its subcategories
-            const children = await prisma.category.findMany({
+            const children = await db_1.prisma.category.findMany({
                 where: { parentId: categoryId },
                 select: { id: true },
             });
@@ -81,7 +84,7 @@ export class CourseService {
                 break;
             // default: most-relevant (publishedAt desc)
         }
-        const courses = await prisma.course.findMany({
+        const courses = await db_1.prisma.course.findMany({
             where,
             include: {
                 instructor: {
@@ -98,7 +101,7 @@ export class CourseService {
             take: Number(limit),
             orderBy,
         });
-        const total = await prisma.course.count({ where });
+        const total = await db_1.prisma.course.count({ where });
         return { data: courses, total, limit, offset };
     }
     /**
@@ -107,7 +110,7 @@ export class CourseService {
     static async getPublicCourseDetails(slugOrId) {
         const isCuid = slugOrId.length > 20 && !slugOrId.includes('-'); // Rough heuristic
         const where = isCuid ? { id: slugOrId } : { slug: slugOrId };
-        return prisma.course.findFirst({
+        return db_1.prisma.course.findFirst({
             where: { ...where, status: 'PUBLISHED' },
             include: {
                 instructor: {
@@ -140,13 +143,13 @@ export class CourseService {
     static async getRelatedCourses(slugOrId, limit = 8) {
         const isCuid = slugOrId.length > 20 && !slugOrId.includes('-');
         const where = isCuid ? { id: slugOrId } : { slug: slugOrId };
-        const course = await prisma.course.findFirst({
+        const course = await db_1.prisma.course.findFirst({
             where: { ...where, status: 'PUBLISHED' },
             select: { id: true, categoryId: true },
         });
         if (!course)
             return [];
-        return prisma.course.findMany({
+        return db_1.prisma.course.findMany({
             where: {
                 status: 'PUBLISHED',
                 categoryId: course.categoryId,
@@ -171,7 +174,7 @@ export class CourseService {
      * Get a list of all agricultural categories for the catalog filter UI.
      */
     static async getCategories() {
-        return prisma.category.findMany({
+        return db_1.prisma.category.findMany({
             where: { parentId: null },
             include: {
                 children: {
@@ -188,7 +191,7 @@ export class CourseService {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         // Get courses with most recent enrollments
-        const recentEnrollments = await prisma.enrollment.groupBy({
+        const recentEnrollments = await db_1.prisma.enrollment.groupBy({
             by: ['courseId'],
             where: {
                 status: 'ACTIVE',
@@ -200,7 +203,7 @@ export class CourseService {
         });
         if (recentEnrollments.length === 0) {
             // Fallback: most enrolled courses overall
-            return prisma.course.findMany({
+            return db_1.prisma.course.findMany({
                 where: { status: 'PUBLISHED' },
                 include: {
                     instructor: { select: { id: true, profile: { select: { displayName: true } } } },
@@ -212,7 +215,7 @@ export class CourseService {
             });
         }
         const courseIds = recentEnrollments.map(e => e.courseId);
-        const courses = await prisma.course.findMany({
+        const courses = await db_1.prisma.course.findMany({
             where: { id: { in: courseIds }, status: 'PUBLISHED' },
             include: {
                 instructor: { select: { id: true, profile: { select: { displayName: true } } } },
@@ -231,13 +234,13 @@ export class CourseService {
      */
     static async getFeaturedCollection() {
         // Get a featured category (most enrolled)
-        const topCat = await prisma.category.findFirst({
+        const topCat = await db_1.prisma.category.findFirst({
             where: { parentId: null },
             orderBy: { courses: { _count: 'desc' } },
         });
         if (!topCat)
             return null;
-        const courses = await prisma.course.findMany({
+        const courses = await db_1.prisma.course.findMany({
             where: { categoryId: topCat.id, status: 'PUBLISHED' },
             include: {
                 instructor: { select: { profile: { select: { displayName: true } } } },
@@ -267,3 +270,4 @@ export class CourseService {
         };
     }
 }
+exports.CourseService = CourseService;

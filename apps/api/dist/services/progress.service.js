@@ -1,19 +1,22 @@
-import { prisma } from '@farmwise/db';
-import { storageService } from './cloudinary.service';
-export class ProgressService {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ProgressService = void 0;
+const db_1 = require("@farmwise/db");
+const cloudinary_service_1 = require("./cloudinary.service");
+class ProgressService {
     /**
      * Get a signed, short-lived (5 min) URL to download the HLS manifest.
      */
     static async getDownloadUrl(userId, lectureId) {
         // 1. Verify user is enrolled in the course that contains this lecture
-        const lecture = await prisma.lecture.findUnique({
+        const lecture = await db_1.prisma.lecture.findUnique({
             where: { id: lectureId },
             include: { section: { include: { course: true } } }
         });
         if (!lecture || !lecture.section || !lecture.section.course) {
             throw new Error('Lecture not found');
         }
-        const enrollment = await prisma.enrollment.findFirst({
+        const enrollment = await db_1.prisma.enrollment.findFirst({
             where: {
                 userId,
                 courseId: lecture.section.course.id,
@@ -27,7 +30,7 @@ export class ProgressService {
             throw new Error('Lecture has no associated video');
         }
         // 2. Generate the signed URL (300 seconds = 5 minutes constraint)
-        const storageSvc = storageService;
+        const storageSvc = cloudinary_service_1.storageService;
         if (!storageSvc.getSignedVideoUrl) {
             throw new Error('Storage service missing getSignedVideoUrl implementation');
         }
@@ -38,15 +41,15 @@ export class ProgressService {
      * Record a successful download
      */
     static async recordDownload(userId, lectureId) {
-        const lecture = await prisma.lecture.findUnique({ where: { id: lectureId }, include: { section: true } });
+        const lecture = await db_1.prisma.lecture.findUnique({ where: { id: lectureId }, include: { section: true } });
         if (!lecture)
             throw new Error('Lecture not found');
-        const enrollment = await prisma.enrollment.findFirst({
+        const enrollment = await db_1.prisma.enrollment.findFirst({
             where: { userId, courseId: lecture.section.courseId, status: 'ACTIVE' }
         });
         if (!enrollment)
             throw new Error('Not enrolled');
-        await prisma.offlineDownload.upsert({
+        await db_1.prisma.offlineDownload.upsert({
             where: { userId_lectureId: { userId, lectureId } },
             update: { status: 'DOWNLOADED' },
             create: { userId, lectureId, enrollmentId: enrollment.id, status: 'DOWNLOADED' }
@@ -56,7 +59,7 @@ export class ProgressService {
      * Mark a download as deleted
      */
     static async recordDownloadDeletion(userId, lectureId) {
-        await prisma.offlineDownload.updateMany({
+        await db_1.prisma.offlineDownload.updateMany({
             where: { userId, lectureId },
             data: { status: 'DELETED' }
         });
@@ -66,7 +69,7 @@ export class ProgressService {
      */
     static async syncProgress(userId, records) {
         for (const record of records) {
-            await prisma.lectureProgress.upsert({
+            await db_1.prisma.lectureProgress.upsert({
                 where: { userId_lectureId: { userId, lectureId: record.lectureId } },
                 update: {
                     isCompleted: record.isCompleted,
@@ -85,3 +88,4 @@ export class ProgressService {
         }
     }
 }
+exports.ProgressService = ProgressService;
