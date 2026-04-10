@@ -2,6 +2,7 @@
 .env
 .claude
 node_modules
+dist/
 AGENT_NOTES.md
 CLAUDE.md
 course_detail_page.md
