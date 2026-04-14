@@ -5,7 +5,7 @@ const GOOGLE_CLIENT_ID = '734919431238-grkippnk46k710affqmq54eaquegt1jb.apps.goo
 
 interface GoogleAuthResult {
   accessToken: string;
-  user: { id: string; role: string };
+  user: { id: string; role: 'FARMER' | 'INSTRUCTOR' | 'ADMIN' };
 }
 
 /**
