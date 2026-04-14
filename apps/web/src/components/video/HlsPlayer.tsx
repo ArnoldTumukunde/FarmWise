@@ -28,25 +28,23 @@ function createOfflineLoader(DefaultLoader: any) {
         const segIndex = parseInt(parts[1], 10);
 
         getDecryptedSegment(lectureId, segIndex).then(data => {
+          const now = performance.now();
+          const mkStats = (size: number) => ({
+            aborted: false,
+            loaded: size,
+            total: size,
+            chunkCount: 1,
+            loading: { start: now, first: now, end: now },
+            parsing: { start: 0, end: 0 },
+            buffering: { start: 0, first: 0, end: 0 },
+            retry: 0,
+            bwEstimate: 0,
+          }) as unknown as LoaderStats;
+
           if (data) {
-            const stats: LoaderStats = {
-              aborted: false,
-              loaded: data.byteLength,
-              total: data.byteLength,
-              loading: { start: performance.now(), first: performance.now(), end: performance.now() },
-              parsing: { start: 0, end: 0 },
-              buffering: { start: 0, first: 0, end: 0 },
-              retry: 0,
-              bwEstimate: 0,
-            };
-            callbacks.onSuccess(
-              { data, url },
-              stats,
-              context,
-              null,
-            );
+            callbacks.onSuccess({ data, url }, mkStats(data.byteLength), context, null);
           } else {
-            callbacks.onError({ code: 404, text: 'Segment not found in offline storage' }, context, null, stats as any);
+            callbacks.onError({ code: 404, text: 'Segment not found' }, context, null, mkStats(0));
           }
         }).catch(err => {
           callbacks.onError({ code: 500, text: err.message }, context, null, null as any);
