@@ -13,6 +13,17 @@ const AT = AfricasTalking({
 
 const sms = AT.SMS;
 
+/** Sanitize phone and send SMS — never throws (logs warning on failure) */
+async function sendOtpSms(phone: string, message: string) {
+    const sanitized = phone.replace(/[\s\-()]/g, '');
+    try {
+        await sms.send({ to: [sanitized], message });
+    } catch (error) {
+        console.error('SMS Error:', error);
+        console.warn(`SMS delivery failed for ${sanitized} — message: ${message}`);
+    }
+}
+
 export class AuthService {
     static async registerPhone(phone: string, passwordHash?: string, name?: string) {
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -33,15 +44,7 @@ export class AuthService {
             });
         }
 
-        try {
-            await sms.send({
-                to: [phone],
-                message: `Your AAN Academy verification code is ${otp}. Expires in 15 minutes.`
-            });
-        } catch (error) {
-            console.error("SMS Error:", error);
-            throw new Error("Failed to send SMS");
-        }
+        await sendOtpSms(phone, `Your AAN Academy verification code is ${otp}. Expires in 15 minutes.`);
 
         return { success: true, message: "OTP sent successfully" };
     }
@@ -229,14 +232,7 @@ export class AuthService {
             data: { resetToken: otp, resetTokenExp: tokenExp }
         });
 
-        try {
-            await sms.send({
-                to: [phone],
-                message: `Your AAN Academy password reset code is ${otp}. Expires in 15 minutes.`
-            });
-        } catch (error) {
-            console.error("SMS Error:", error);
-            throw new Error("Failed to send SMS");
+        await sendOtpSms(phone, `Your AAN Academy password reset code is ${otp}. Expires in 15 minutes.`);
         }
 
         return { success: true };
@@ -306,15 +302,7 @@ export class AuthService {
             data: { verifyToken: otp, verifyTokenExp: tokenExp }
         });
 
-        try {
-            await sms.send({
-                to: [phone],
-                message: `Your AAN Academy verification code is ${otp}. Expires in 15 minutes.`
-            });
-        } catch (error) {
-            console.error("SMS Error:", error);
-            throw new Error("Failed to send SMS");
-        }
+        await sendOtpSms(phone, `Your AAN Academy verification code is ${otp}. Expires in 15 minutes.`);
 
         return { success: true };
     }
