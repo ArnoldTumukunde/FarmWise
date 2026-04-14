@@ -101,6 +101,25 @@ export class AuthController {
         res.json({ success: true, message: 'Logged out' });
     }
 
+    static async googleAuth(req: Request, res: Response) {
+        try {
+            const { idToken } = req.body;
+            if (!idToken) return res.status(400).json({ error: 'idToken required' });
+
+            const result = await AuthService.googleAuth(idToken);
+
+            res.cookie('refreshToken', result.refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000,
+            });
+            res.json({ accessToken: result.accessToken, user: result.user });
+        } catch (error: any) {
+            res.status(401).json({ error: error.message });
+        }
+    }
+
     static async forgotPassword(req: Request, res: Response) {
         try {
             const { email, phone } = req.body;

@@ -12,6 +12,7 @@ router.post('/verify', otpLimiter, AuthController.verify);
 router.post('/login', authLimiter, AuthController.login);
 router.post('/refresh', authLimiter, AuthController.refresh);
 router.post('/logout', AuthController.logout);
+router.post('/google', authLimiter, AuthController.googleAuth);
 router.post('/forgot-password', authLimiter, AuthController.forgotPassword);
 router.post('/reset-password', authLimiter, AuthController.resetPassword);
 router.post('/resend-otp', otpLimiter, AuthController.resendOtp);

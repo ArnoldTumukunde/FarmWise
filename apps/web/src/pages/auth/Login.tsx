@@ -5,6 +5,7 @@ import { fetchApi } from '@/lib/api';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Leaf, Loader2, Eye, EyeOff } from 'lucide-react';
+import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 
 type Method = 'email' | 'phone';
 
@@ -37,6 +38,20 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const { triggerGoogleAuth } = useGoogleAuth(
+    (res) => {
+      setAuth(res.user, res.accessToken);
+      toast.success('Welcome back!');
+      navigate(getRedirectForRole(res.user?.role, redirectTo));
+      setGoogleLoading(false);
+    },
+    (err) => {
+      setServerError(err);
+      setGoogleLoading(false);
+    }
+  );
 
   // Email form
   const emailForm = useForm({
@@ -123,9 +138,11 @@ export default function Login() {
           {/* Google OAuth */}
           <button
             type="button"
-            className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2.5 text-sm font-medium text-text-base hover:bg-gray-50 transition-colors duration-150 mb-5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            disabled={googleLoading}
+            onClick={() => { setGoogleLoading(true); setServerError(''); triggerGoogleAuth(); }}
+            className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2.5 text-sm font-medium text-text-base hover:bg-gray-50 transition-colors duration-150 mb-5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
           >
-            <img src="/icons/google.svg" alt="" width={18} height={18} />
+            {googleLoading ? <Loader2 size={18} className="animate-spin" /> : <img src="/icons/google.svg" alt="" width={18} height={18} />}
             Continue with Google
           </button>
 

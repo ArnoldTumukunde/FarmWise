@@ -49,6 +49,7 @@ services:
       - RESEND_API_KEY=${RESEND_API_KEY}
       - AT_API_KEY=${AT_API_KEY}
       - AT_USERNAME=${AT_USERNAME}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
     restart: unless-stopped
     depends_on:
       db:

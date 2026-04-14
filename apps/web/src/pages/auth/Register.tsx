@@ -4,6 +4,9 @@ import { z } from 'zod';
 import { fetchApi } from '@/lib/api';
 import { useNavigate, Link } from 'react-router-dom';
 import { Leaf, Loader2, Eye, EyeOff } from 'lucide-react';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import { toast } from 'sonner';
 
 /* ── Schemas ──────────────────────────────────────────── */
 
@@ -73,12 +76,27 @@ const COUNTRIES = [
 
 export default function Register() {
   const navigate = useNavigate();
+  const { setAuth } = useAuthStore();
   const [method, setMethod] = useState<Method>('email');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [serverError, setServerError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [hasAttempted, setHasAttempted] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const { triggerGoogleAuth } = useGoogleAuth(
+    (res) => {
+      setAuth(res.user, res.accessToken);
+      toast.success('Welcome to AAN Academy!');
+      navigate('/');
+      setGoogleLoading(false);
+    },
+    (err) => {
+      setServerError(err);
+      setGoogleLoading(false);
+    }
+  );
 
   // Email form
   const emailForm = useForm<EmailForm>({
@@ -186,9 +204,11 @@ export default function Register() {
           {/* Google OAuth */}
           <button
             type="button"
-            className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2.5 text-sm font-medium text-text-base hover:bg-gray-50 transition-colors duration-150 mb-5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            disabled={googleLoading}
+            onClick={() => { setGoogleLoading(true); setServerError(''); triggerGoogleAuth(); }}
+            className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2.5 text-sm font-medium text-text-base hover:bg-gray-50 transition-colors duration-150 mb-5 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
           >
-            <img src="/icons/google.svg" alt="" width={18} height={18} />
+            {googleLoading ? <Loader2 size={18} className="animate-spin" /> : <img src="/icons/google.svg" alt="" width={18} height={18} />}
             Continue with Google
           </button>
 

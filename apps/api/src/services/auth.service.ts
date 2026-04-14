@@ -149,6 +149,52 @@ export class AuthService {
         return { accessToken, refreshToken, user: { id: userId, role } };
     }
 
+    /**
+     * Google OAuth: verify ID token, find-or-create user, return session tokens.
+     */
+    static async googleAuth(idToken: string) {
+        // Verify the Google ID token
+        const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
+        if (!res.ok) throw new Error('Invalid Google token');
+        const payload = await res.json();
+
+        const clientId = process.env.GOOGLE_CLIENT_ID;
+        if (payload.aud !== clientId) throw new Error('Token audience mismatch');
+
+        const email = payload.email as string;
+        const name = payload.name as string | undefined;
+
+        if (!email) throw new Error('Google account has no email');
+
+        // Find or create user
+        let user = await prisma.user.findUnique({ where: { email } });
+
+        if (!user) {
+            user = await prisma.user.create({
+                data: {
+                    email,
+                    role: 'FARMER',
+                    isVerified: true, // Google already verified the email
+                },
+            });
+            // Create profile
+            await prisma.profile.create({
+                data: {
+                    userId: user.id,
+                    displayName: name || email.split('@')[0],
+                },
+            });
+        } else if (!user.isVerified) {
+            // Mark as verified since Google confirmed the email
+            user = await prisma.user.update({
+                where: { id: user.id },
+                data: { isVerified: true },
+            });
+        }
+
+        return this.generateTokens(user.id, user.role);
+    }
+
     static async requestPasswordReset(email: string) {
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) return { success: true }; // Prevent email scanning
