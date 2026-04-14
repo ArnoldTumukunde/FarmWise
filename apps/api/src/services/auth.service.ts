@@ -233,7 +233,6 @@ export class AuthService {
         });
 
         await sendOtpSms(phone, `Your AAN Academy password reset code is ${otp}. Expires in 15 minutes.`);
-        }
 
         return { success: true };
     }
