@@ -9,7 +9,7 @@
     "dependencies": {
         "@farmwise/db": "*",
         "@farmwise/shared": "*",
-        "@prisma/client": "^7.4.2",
+        "@prisma/client": "^5.22.0",
         "@types/sanitize-html": "^2.16.1",
         "africastalking": "^0.7.9",
         "bcrypt": "^6.0.0",
@@ -38,7 +38,7 @@
         "@types/jsonwebtoken": "^9.0.10",
         "@types/node": "^20.19.37",
         "esbuild": "^0.28.0",
-        "prisma": "^7.4.2",
+        "prisma": "^5.22.0",
         "tsx": "^4.21.0",
         "typescript": "^5.9.3",
         "vitest": "^4.0.18"

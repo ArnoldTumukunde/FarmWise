@@ -7,17 +7,25 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-farmwise}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-farmwise_secret}
       POSTGRES_DB: ${POSTGRES_DB:-farmwise}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-farmwise}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   api:
     build:
@@ -27,6 +35,7 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-farmwise}:${POSTGRES_PASSWORD:-farmwise_secret}@db:5432/${POSTGRES_DB:-farmwise}?schema=public
       - REDIS_URL=redis://redis:6379
       - PORT=4000
+      - NODE_ENV=production
       - FRONTEND_URL=${FRONTEND_URL:-https://aan.academy}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
@@ -42,8 +51,15 @@ services:
       - AT_USERNAME=${AT_USERNAME}
     restart: unless-stopped
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   web:
     build:
@@ -51,6 +67,7 @@ services:
       dockerfile: Dockerfile.web
       args:
         - VITE_API_URL=/api/v1
+    restart: unless-stopped
     depends_on:
       - api
 

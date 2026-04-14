@@ -76,23 +76,25 @@ export class ProgressService {
      * Sync progress from the offline db
      */
     static async syncProgress(userId: string, records: any[]) {
-        for (const record of records) {
-            await prisma.lectureProgress.upsert({
-                where: { userId_lectureId: { userId, lectureId: record.lectureId } },
-                update: {
-                    isCompleted: record.isCompleted,
-                    watchedSeconds: record.watchedSeconds,
-                    syncedAt: new Date()
-                },
-                create: {
-                    userId,
-                    lectureId: record.lectureId,
-                    enrollmentId: record.enrollmentId,
-                    isCompleted: record.isCompleted,
-                    watchedSeconds: record.watchedSeconds,
-                    syncedAt: new Date()
-                }
-            });
-        }
+        await prisma.$transaction(
+            records.map((record) =>
+                prisma.lectureProgress.upsert({
+                    where: { userId_lectureId: { userId, lectureId: record.lectureId } },
+                    update: {
+                        isCompleted: record.isCompleted,
+                        watchedSeconds: Math.max(0, Number(record.watchedSeconds) || 0),
+                        syncedAt: new Date()
+                    },
+                    create: {
+                        userId,
+                        lectureId: record.lectureId,
+                        enrollmentId: record.enrollmentId,
+                        isCompleted: record.isCompleted,
+                        watchedSeconds: Math.max(0, Number(record.watchedSeconds) || 0),
+                        syncedAt: new Date()
+                    }
+                })
+            )
+        );
     }
 }

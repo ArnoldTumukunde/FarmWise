@@ -48,7 +48,8 @@ export class AuthService {
 
     static async verifyPhone(phone: string, otp: string) {
         const user = await prisma.user.findUnique({ where: { phone } });
-        if (!user || user.verifyToken !== otp || !user.verifyTokenExp || user.verifyTokenExp < new Date()) {
+        if (!user || !user.verifyToken || !user.verifyTokenExp || user.verifyTokenExp < new Date() ||
+            !crypto.timingSafeEqual(Buffer.from(user.verifyToken), Buffer.from(otp))) {
             throw new Error("Invalid or expired OTP");
         }
 

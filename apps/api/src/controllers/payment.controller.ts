@@ -59,13 +59,16 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response) => 
       finalPrice = Math.max(0, finalPrice - discountAmount);
       appliedCouponId = coupon.id;
 
-      // Atomic increment usedCount
-      await prisma.$executeRaw`
+      // Atomic increment usedCount — check affected rows
+      const rowsAffected = await prisma.$executeRaw`
         UPDATE "Coupon"
         SET "usedCount" = "usedCount" + 1
         WHERE id = ${coupon.id}
           AND ("maxUses" IS NULL OR "usedCount" < "maxUses")
       `;
+      if (rowsAffected === 0) {
+        return res.status(400).json({ error: 'Coupon usage limit reached' });
+      }
     }
 
     if (finalPrice === 0) {
@@ -244,12 +247,15 @@ export const validateCoupon = async (req: AuthRequest, res: Response) => {
     }
 
     // Atomic increment usedCount using raw SQL to prevent race conditions
-    await prisma.$executeRaw`
+    const couponRows = await prisma.$executeRaw`
       UPDATE "Coupon"
       SET "usedCount" = "usedCount" + 1
       WHERE id = ${coupon.id}
         AND ("maxUses" IS NULL OR "usedCount" < "maxUses")
     `;
+    if (couponRows === 0) {
+      return res.status(400).json({ error: 'Coupon usage limit reached' });
+    }
 
     res.json({ discountAmount, couponId: coupon.id });
   } catch (error: any) {

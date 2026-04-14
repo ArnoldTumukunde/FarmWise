@@ -46,25 +46,26 @@ export class FarmerService {
     }
     const daysThisWeekActive = activeDates.size;
 
-    // Current streak: count consecutive days backward from today
+    // Current streak: single query to fetch distinct active dates, then compute in-memory
+    const yearAgo = new Date(todayStart);
+    yearAgo.setDate(yearAgo.getDate() - 365);
+    const recentProgress = await prisma.lectureProgress.findMany({
+      where: { userId, lastWatchedAt: { gte: yearAgo } },
+      select: { lastWatchedAt: true },
+    });
+    const streakDates = new Set<string>();
+    for (const p of recentProgress) {
+      if (p.lastWatchedAt) streakDates.add(p.lastWatchedAt.toISOString().slice(0, 10));
+    }
+
     let currentStreakDays = 0;
     const checkDate = new Date(todayStart);
     for (let i = 0; i < 365; i++) {
       const dateStr = checkDate.toISOString().slice(0, 10);
-      const hasActivity = await prisma.lectureProgress.count({
-        where: {
-          userId,
-          lastWatchedAt: {
-            gte: new Date(dateStr + 'T00:00:00.000Z'),
-            lte: new Date(dateStr + 'T23:59:59.999Z'),
-          },
-        },
-      });
-      if (hasActivity > 0) {
+      if (streakDates.has(dateStr)) {
         currentStreakDays++;
         checkDate.setDate(checkDate.getDate() - 1);
       } else if (i === 0) {
-        // Today hasn't had activity yet, check yesterday
         checkDate.setDate(checkDate.getDate() - 1);
         continue;
       } else {

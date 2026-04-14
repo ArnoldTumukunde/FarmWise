@@ -255,29 +255,38 @@ export class InstructorService {
       ORDER BY date ASC
     `;
 
-    // Lecture completion rates
+    // Lecture completion rates (single query instead of N+1)
     const lectures = await prisma.lecture.findMany({
       where: { section: { courseId } },
       select: { id: true, title: true },
     });
 
-    const completionRates = await Promise.all(
-      lectures.map(async (lecture) => {
-        const totalProgress = await prisma.lectureProgress.count({
-          where: { lectureId: lecture.id },
-        });
-        const completedProgress = await prisma.lectureProgress.count({
-          where: { lectureId: lecture.id, isCompleted: true },
-        });
-        return {
-          lectureId: lecture.id,
-          title: lecture.title,
-          totalStarted: totalProgress,
-          totalCompleted: completedProgress,
-          completionRate: totalProgress > 0 ? Math.round((completedProgress / totalProgress) * 100) : 0,
-        };
-      })
-    );
+    const lectureIds = lectures.map(l => l.id);
+    const progressStats = await prisma.lectureProgress.groupBy({
+      by: ['lectureId'],
+      where: { lectureId: { in: lectureIds } },
+      _count: { _all: true },
+    });
+    const completedStats = await prisma.lectureProgress.groupBy({
+      by: ['lectureId'],
+      where: { lectureId: { in: lectureIds }, isCompleted: true },
+      _count: { _all: true },
+    });
+
+    const totalMap = new Map(progressStats.map(s => [s.lectureId, s._count._all]));
+    const completedMap = new Map(completedStats.map(s => [s.lectureId, s._count._all]));
+
+    const completionRates = lectures.map((lecture) => {
+      const totalStarted = totalMap.get(lecture.id) || 0;
+      const totalCompleted = completedMap.get(lecture.id) || 0;
+      return {
+        lectureId: lecture.id,
+        title: lecture.title,
+        totalStarted,
+        totalCompleted,
+        completionRate: totalStarted > 0 ? Math.round((totalCompleted / totalStarted) * 100) : 0,
+      };
+    });
 
     return {
       courseTitle: course.title,

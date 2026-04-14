@@ -14,7 +14,16 @@ function findEnv(): string {
 }
 dotenv.config({ path: findEnv() });
 
-import express from 'express';
+// ── Validate critical env vars ──────────────────────────────────────────────
+const REQUIRED_ENV = ['JWT_SECRET', 'JWT_REFRESH_SECRET'] as const;
+for (const key of REQUIRED_ENV) {
+    if (!process.env[key]) {
+        console.error(`FATAL: Missing required environment variable: ${key}`);
+        process.exit(1);
+    }
+}
+
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -35,6 +44,7 @@ import statsRoutes from './routes/stats.routes';
 import notificationRoutes from './routes/notification.routes';
 import farmerRoutes from './routes/farmer.routes';
 import pagesRoutes from './routes/pages.routes';
+import { redisClient } from './lib/redis';
 
 const app = express();
 
@@ -77,7 +87,31 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
+// ── Global error handler (must be last middleware) ──────────────────────────
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+});
+
+// ── Start server ────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`API running on port ${PORT}`);
+});
+
+// ── Graceful shutdown ───────────────────────────────────────────────────────
+async function shutdown(signal: string) {
+    console.log(`${signal} received — shutting down gracefully`);
+    server.close(() => {
+        console.log('HTTP server closed');
+    });
+    try { await redisClient.quit(); } catch { /* ignore */ }
+    try { const { prisma } = await import('@farmwise/db'); await prisma.$disconnect(); } catch { /* ignore */ }
+    setTimeout(() => process.exit(0), 5000); // force exit after 5s
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled promise rejection:', reason);
 });

@@ -3,15 +3,33 @@ import { bullmqConnection } from '../lib/redis';
 import { prisma } from '@farmwise/db';
 import { NotificationType } from '@prisma/client';
 import { emailService } from '../services/email.service';
+// @ts-ignore
+import AfricasTalking from 'africastalking';
 
-export const smsServiceMock = async (to: string, message: string) => {
-    console.log(`[MOCK SMS] To: ${to} | Message length: ${message.length} | Body: ${message}`);
-    if (message.length > 160) {
-        console.warn(`[WARNING] SMS to ${to} exceeded 160 chars!`);
+// Lazy-init AT so env vars are loaded
+let _sms: any = null;
+function getSms() {
+    if (!_sms) {
+        const at = AfricasTalking({
+            apiKey: process.env.AT_API_KEY as string,
+            username: process.env.AT_USERNAME as string,
+        });
+        _sms = at.SMS;
     }
-    // Simulate latency
-    await new Promise(r => setTimeout(r, 500));
-};
+    return _sms;
+}
+
+async function sendSms(to: string, message: string) {
+    if (!process.env.AT_API_KEY) {
+        console.warn('[SMS] AT_API_KEY not set — skipping SMS to', to);
+        return;
+    }
+    try {
+        await getSms().send({ to: [to], message: message.substring(0, 160) });
+    } catch (err: any) {
+        console.error(`[SMS] Failed to send to ${to}:`, err.message);
+    }
+}
 
 export interface NotificationJobData {
     userId: string;
@@ -40,9 +58,9 @@ export const notificationWorker = new Worker<NotificationJobData>(
 
         // 3. Send SMS if available
         if (smsOptions) {
-            await smsServiceMock(smsOptions.to, smsOptions.message);
+            await sendSms(smsOptions.to, smsOptions.message);
         }
-        
+
         return { success: true };
     },
     { connection: bullmqConnection }
