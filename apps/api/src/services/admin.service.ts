@@ -205,6 +205,13 @@ export class AdminService {
          });
     }
 
+    static async setSponsored(courseId: string, sponsoredUntil: string | null) {
+         return prisma.course.update({
+             where: { id: courseId },
+             data: { sponsoredUntil: sponsoredUntil ? new Date(sponsoredUntil) : null }
+         });
+    }
+
     // --- REVIEWS ---
     static async listFlaggedReviews() {
         // Simple heuristic: 1-star reviews that might need moderation

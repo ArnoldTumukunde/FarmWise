@@ -3,7 +3,7 @@ import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
 import {
     getDashboard, getUsers, getApplications, reviewApplication,
     updateUserRole, suspendUser, deleteUser,
-    listAllCourses, getCoursesForReview, moderateCourse, toggleFeatured,
+    listAllCourses, getCoursesForReview, moderateCourse, toggleFeatured, setSponsored,
     deleteCourse, unpublishCourse,
     getFlaggedReviews, moderateReview, deleteReview,
     getUserById,
@@ -41,6 +41,7 @@ router.get('/courses', listAllCourses);
 router.get('/courses/review', getCoursesForReview);
 router.post('/courses/:id/moderate', moderateCourse);
 router.post('/courses/:id/featured', toggleFeatured);
+router.post('/courses/:id/sponsored', setSponsored);
 router.post('/courses/:id/unpublish', unpublishCourse);
 router.delete('/courses/:id', deleteCourse);
 

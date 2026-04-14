@@ -84,6 +84,7 @@ model Course {
   status               CourseStatus @default(DRAFT)
   isOfflineEnabled     Boolean      @default(true)
   isFeatured           Boolean      @default(false) // Set by admin; drives [FEATURED] badge in course card
+  sponsoredUntil       DateTime?    // If set and > now(), course shows as "Sponsored" in carousels
   // Denormalized counters — update atomically in the service layer on each relevant event:
   averageRating        Decimal      @default(0) @db.Decimal(3, 2)
   reviewCount          Int          @default(0)

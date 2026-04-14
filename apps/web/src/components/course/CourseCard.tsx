@@ -25,6 +25,7 @@ export interface CourseCardData {
   language?: string;
   updatedAt?: string;
   isFeatured?: boolean;
+  sponsoredUntil?: string | null;
   isBestseller?: boolean;
   isOfflineEnabled?: boolean;
   outcomes?: string[];
@@ -71,6 +72,14 @@ export function FeaturedBadge() {
   return (
     <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-sm uppercase tracking-wide shadow-sm">
       Featured
+    </span>
+  );
+}
+
+export function SponsoredBadge() {
+  return (
+    <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-sm uppercase tracking-wide shadow-sm">
+      Sponsored
     </span>
   );
 }
@@ -253,6 +262,7 @@ export default function CourseCard({ course, eager = false }: CourseCardProps) {
         {/* Badge overlay row */}
         <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between">
           <div className="flex gap-1.5 flex-wrap">
+            {course.sponsoredUntil && new Date(course.sponsoredUntil) > new Date() && <SponsoredBadge />}
             {bestseller && <BestsellerBadge />}
             {course.isFeatured && !bestseller && <FeaturedBadge />}
           </div>
@@ -314,6 +324,7 @@ export default function CourseCard({ course, eager = false }: CourseCardProps) {
 
             {/* Badges */}
             <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+              {course.sponsoredUntil && new Date(course.sponsoredUntil) > new Date() && <SponsoredBadge />}
               {bestseller && <BestsellerBadge />}
               {course.isFeatured && <FeaturedBadge />}
               {course.isOfflineEnabled && <OfflineBadge />}

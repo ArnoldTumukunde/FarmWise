@@ -1,11 +1,66 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
-import type { Level } from 'hls.js';
+import type { Level, FragmentLoaderContext, LoaderCallbacks, LoaderConfiguration, LoaderStats } from 'hls.js';
 import { Settings, Loader2, AlertTriangle } from 'lucide-react';
 import { useOfflineStore } from '../../offline/offlineStore';
-import { getDownloadStatus } from '../../offline/downloadManager';
+import { getDownloadStatus, getDecryptedSegment } from '../../offline/downloadManager';
 
 import { fetchApi } from '../../lib/api';
+
+/**
+ * Custom HLS.js fragment loader that intercepts offline-seg:// URIs
+ * and serves decrypted segments from IndexedDB.
+ */
+function createOfflineLoader(DefaultLoader: any) {
+  return class OfflineFragLoader {
+    private defaultLoader: any;
+
+    constructor(config: any) {
+      this.defaultLoader = new DefaultLoader(config);
+    }
+
+    load(context: FragmentLoaderContext, config: LoaderConfiguration, callbacks: LoaderCallbacks<FragmentLoaderContext>) {
+      const url = context.url;
+      if (url.startsWith('offline-seg://')) {
+        // Parse: offline-seg://lectureId/segIndex
+        const parts = url.replace('offline-seg://', '').split('/');
+        const lectureId = parts[0];
+        const segIndex = parseInt(parts[1], 10);
+
+        getDecryptedSegment(lectureId, segIndex).then(data => {
+          if (data) {
+            const stats: LoaderStats = {
+              aborted: false,
+              loaded: data.byteLength,
+              total: data.byteLength,
+              loading: { start: performance.now(), first: performance.now(), end: performance.now() },
+              parsing: { start: 0, end: 0 },
+              buffering: { start: 0, first: 0, end: 0 },
+              retry: 0,
+              bwEstimate: 0,
+            };
+            callbacks.onSuccess(
+              { data, url },
+              stats,
+              context,
+              null,
+            );
+          } else {
+            callbacks.onError({ code: 404, text: 'Segment not found in offline storage' }, context, null, stats as any);
+          }
+        }).catch(err => {
+          callbacks.onError({ code: 500, text: err.message }, context, null, null as any);
+        });
+        return;
+      }
+      // Online segments — use default loader
+      this.defaultLoader.load(context, config, callbacks);
+    }
+
+    abort() { this.defaultLoader?.abort?.(); }
+    destroy() { this.defaultLoader?.destroy?.(); }
+  };
+}
 
 interface HlsPlayerProps {
   lectureId: string;
@@ -94,9 +149,11 @@ export function HlsPlayer({ lectureId, onEnded, onProgress }: HlsPlayerProps) {
       }
 
       if (Hls.isSupported()) {
+        const isOfflinePlayback = status?.status === 'DOWNLOADED' && status.encrypted;
         hls = new Hls({
           enableWorker: true,
           lowLatencyMode: false,
+          ...(isOfflinePlayback ? { fLoader: createOfflineLoader((Hls as any).DefaultConfig.loader) as any } : {}),
         });
         hlsRef.current = hls;
 
@@ -209,35 +266,34 @@ export function HlsPlayer({ lectureId, onEnded, onProgress }: HlsPlayerProps) {
         </div>
       )}
 
-      {/* Quality selector — only when HLS levels are available */}
+      {/* Quality selector — visible when HLS levels are available */}
       {levels.length > 1 && (
         <div
           ref={qualityMenuRef}
-          className="absolute bottom-14 right-3 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200"
+          className="absolute bottom-16 right-2 z-20"
         >
           <button
             type="button"
             onClick={() => setShowQualityMenu(prev => !prev)}
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-black/70 hover:bg-black/90 text-white text-xs font-medium transition-colors backdrop-blur"
             aria-label="Video quality"
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-3.5 h-3.5" />
+            {currentLevel === -1 ? 'Auto' : levels[currentLevel] ? resolutionLabel(levels[currentLevel]) : 'Auto'}
           </button>
 
           {showQualityMenu && (
             <div className="absolute bottom-10 right-0 min-w-[140px] bg-[#1A2E1A]/95 backdrop-blur rounded-lg shadow-lg border border-[#5A6E5A]/20 py-1 text-sm">
-              {/* Auto option */}
               <button
                 type="button"
                 onClick={() => selectLevel(-1)}
-                className={`w-full text-left px-3 py-1.5 hover:bg-[#2E7D32]/30 transition-colors ${
+                className={`w-full text-left px-3 py-2 hover:bg-[#2E7D32]/30 transition-colors ${
                   currentLevel === -1 ? 'text-[#2E7D32] font-medium' : 'text-white'
                 }`}
               >
                 Auto
               </button>
 
-              {/* Individual quality levels — sorted highest to lowest */}
               {[...levels]
                 .map((level, index) => ({ level, index }))
                 .sort((a, b) => b.level.height - a.level.height)
@@ -246,7 +302,7 @@ export function HlsPlayer({ lectureId, onEnded, onProgress }: HlsPlayerProps) {
                     key={index}
                     type="button"
                     onClick={() => selectLevel(index)}
-                    className={`w-full text-left px-3 py-1.5 hover:bg-[#2E7D32]/30 transition-colors ${
+                    className={`w-full text-left px-3 py-2 hover:bg-[#2E7D32]/30 transition-colors ${
                       currentLevel === index ? 'text-[#2E7D32] font-medium' : 'text-white'
                     }`}
                   >

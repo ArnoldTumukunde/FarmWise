@@ -115,6 +115,13 @@ export const toggleFeatured = async (req: AuthRequest, res: Response) => {
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 };
 
+export const setSponsored = async (req: AuthRequest, res: Response) => {
+    try {
+        const course = await AdminService.setSponsored(req.params.id, req.body.sponsoredUntil);
+        res.json({ course });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+};
+
 export const getFlaggedReviews = async (req: AuthRequest, res: Response) => {
     try {
         const reviews = await AdminService.listFlaggedReviews();

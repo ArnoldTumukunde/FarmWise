@@ -22,6 +22,7 @@ import { NotesSection } from '../../components/learn/NotesSection';
 import { CertificateButton } from '../../components/learn/PdfCertificate';
 import { ReviewModal } from '../../components/learn/ReviewModal';
 import { toast } from 'sonner';
+import { downloadCourse, deleteCourseDownloads, getDownloadStatus } from '../../offline/downloadManager';
 
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -99,6 +100,28 @@ export function CoursePlayer() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const watchedSecondsRef = useRef(0);
+  const [courseDownload, setCourseDownload] = useState<{ downloading: boolean; completed: number; total: number } | null>(null);
+
+  const handleDownloadCourse = useCallback(async () => {
+    if (!data?.course?.sections) return;
+    setCourseDownload({ downloading: true, completed: 0, total: 0 });
+    try {
+      await downloadCourse(data.course.sections, (completed, total) => {
+        setCourseDownload({ downloading: true, completed, total });
+      });
+      setCourseDownload(null);
+      toast.success('Course downloaded for offline viewing');
+    } catch {
+      setCourseDownload(null);
+      toast.error('Some lectures failed to download');
+    }
+  }, [data]);
+
+  const handleDeleteCourseDownload = useCallback(async () => {
+    if (!data?.course?.sections) return;
+    await deleteCourseDownloads(data.course.sections);
+    toast.success('Offline downloads removed');
+  }, [data]);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const syncProgressToServer = useCallback(
@@ -477,6 +500,34 @@ export function CoursePlayer() {
               <X size={18} />
             </button>
           </div>
+
+          {/* Download entire course */}
+          {data?.course?.isOfflineEnabled && (
+            <div className="px-4 py-3 border-b border-gray-200">
+              {courseDownload?.downloading ? (
+                <div className="flex items-center gap-2 text-xs text-[#5A6E5A]">
+                  <Download size={14} className="animate-pulse text-[#2E7D32]" />
+                  <span>Downloading {courseDownload.completed}/{courseDownload.total} lectures...</span>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDownloadCourse}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-[#2E7D32] bg-[#2E7D32]/10 hover:bg-[#2E7D32]/20 rounded-lg py-2 transition-colors"
+                  >
+                    <Download size={14} />
+                    Download Course
+                  </button>
+                  <button
+                    onClick={handleDeleteCourseDownload}
+                    className="flex items-center justify-center gap-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg px-3 py-2 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Sections & Lectures */}
           <div className="pb-20">

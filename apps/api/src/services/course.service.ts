@@ -93,6 +93,7 @@ export class CourseService {
             // default: most-relevant (publishedAt desc)
         }
 
+        // Sponsored courses sort first (non-null sponsoredUntil descending)
         const courses = await prisma.course.findMany({
             where,
             include: {
@@ -108,7 +109,7 @@ export class CourseService {
             },
             skip: Number(offset),
             take: Number(limit),
-            orderBy,
+            orderBy: [{ sponsoredUntil: { sort: 'desc', nulls: 'last' } }, orderBy],
         });
 
         const total = await prisma.course.count({ where });
