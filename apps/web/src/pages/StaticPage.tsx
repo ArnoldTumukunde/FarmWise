@@ -15,7 +15,7 @@ export default function StaticPage() {
       .then((data) => {
         setPage(data.page);
         if (data.page?.metaTitle) document.title = data.page.metaTitle;
-        else if (data.page?.title) document.title = `${data.page.title} — FarmWise`;
+        else if (data.page?.title) document.title = `${data.page.title} — AAN Academy`;
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));

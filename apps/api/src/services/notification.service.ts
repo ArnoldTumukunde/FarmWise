@@ -11,12 +11,12 @@ export class NotificationService {
              smsOptions: userPhone ? {
                  to: userPhone,
                  // SMS Constraint: <= 160 chars
-                 message: `FarmWise: Your enrollment in ${courseTitle.substring(0, 30)} is confirmed. Start learning offline now.`
+                 message: `AAN Academy: Your enrollment in ${courseTitle.substring(0, 30)} is confirmed. Start learning offline now.`
              } : undefined,
              emailOptions: userEmail ? {
                  to: userEmail,
                  subject: `Welcome to ${courseTitle}`,
-                 html: `<p>You are now enrolled in <strong>${courseTitle}</strong>. Open the FarmWise app to begin watching lectures even when offline.</p>`
+                 html: `<p>You are now enrolled in <strong>${courseTitle}</strong>. Open the AAN Academy app to begin watching lectures even when offline.</p>`
              } : undefined
         });
     }
@@ -29,7 +29,7 @@ export class NotificationService {
              body: `Your course ${courseTitle} received a new ${rating}-star review.`,
              smsOptions: userPhone ? {
                  to: userPhone,
-                 message: `FarmWise: You received a new ${rating}-star review on ${courseTitle.substring(0, 30)}. Open your dashboard to respond.`
+                 message: `AAN Academy: You received a new ${rating}-star review on ${courseTitle.substring(0, 30)}. Open your dashboard to respond.`
              } : undefined,
              emailOptions: userEmail ? {
                  to: userEmail,
@@ -47,12 +47,12 @@ export class NotificationService {
             body: `Congratulations! You have completed ${courseTitle}. Download your certificate now.`,
             smsOptions: userPhone ? {
                  to: userPhone,
-                 message: `FarmWise: Congrats! You finished ${courseTitle.substring(0, 30)}. Download your certificate in the app now.`
+                 message: `AAN Academy: Congrats! You finished ${courseTitle.substring(0, 30)}. Download your certificate in the app now.`
             } : undefined,
             emailOptions: userEmail ? {
                  to: userEmail,
                  subject: `Certificate of Completion: ${courseTitle}`,
-                 html: `<h2>Congratulations!</h2><p>You have successfully completed <strong>${courseTitle}</strong>. Log in to your FarmWise account to download your official certificate.</p>`
+                 html: `<h2>Congratulations!</h2><p>You have successfully completed <strong>${courseTitle}</strong>. Log in to your AAN Academy account to download your official certificate.</p>`
             } : undefined
         });
     }
@@ -65,7 +65,7 @@ export class NotificationService {
               body: `Your refund of UGX ${amount} for ${courseTitle} has been processed.`,
               smsOptions: userPhone ? {
                  to: userPhone,
-                 message: `FarmWise: Your refund of UGX ${amount} for ${courseTitle.substring(0, 30)} is approved. Funds will return in 5-10 days.`
+                 message: `AAN Academy: Your refund of UGX ${amount} for ${courseTitle.substring(0, 30)} is approved. Funds will return in 5-10 days.`
               } : undefined,
               emailOptions: userEmail ? {
                  to: userEmail,
@@ -83,7 +83,7 @@ export class NotificationService {
               body: `The instructor for ${courseTitle} has responded to your review.`,
               smsOptions: userPhone ? {
                  to: userPhone,
-                 message: `FarmWise: The instructor for ${courseTitle.substring(0, 30)} responded to your review. Check the app to see it.`
+                 message: `AAN Academy: The instructor for ${courseTitle.substring(0, 30)} responded to your review. Check the app to see it.`
               } : undefined,
               emailOptions: userEmail ? {
                  to: userEmail,
@@ -101,7 +101,7 @@ export class NotificationService {
               body: `Your course ${courseTitle} has been approved and is now live!`,
               smsOptions: userPhone ? {
                  to: userPhone,
-                 message: `FarmWise: Great news! Your course ${courseTitle.substring(0, 30)} has been approved and is now live on the marketplace.`
+                 message: `AAN Academy: Great news! Your course ${courseTitle.substring(0, 30)} has been approved and is now live on the marketplace.`
               } : undefined,
               emailOptions: userEmail ? {
                  to: userEmail,
@@ -119,7 +119,7 @@ export class NotificationService {
               body: `Your course ${courseTitle} needs some revisions before it can go live.`,
               smsOptions: userPhone ? {
                  to: userPhone,
-                 message: `FarmWise: Your course ${courseTitle.substring(0, 30)} was returned for revisions. Check your email for details.`
+                 message: `AAN Academy: Your course ${courseTitle.substring(0, 30)} was returned for revisions. Check your email for details.`
               } : undefined,
               emailOptions: userEmail ? {
                  to: userEmail,
@@ -137,7 +137,7 @@ export class NotificationService {
               body: `A payout of UGX ${amount} has been processed to your account.`,
               smsOptions: userPhone ? {
                  to: userPhone,
-                 message: `FarmWise: A payout of UGX ${amount} has been submitted to your Stripe account. Allow a few days for processing.`
+                 message: `AAN Academy: A payout of UGX ${amount} has been submitted to your Stripe account. Allow a few days for processing.`
               } : undefined,
               emailOptions: userEmail ? {
                  to: userEmail,
@@ -155,7 +155,7 @@ export class NotificationService {
               body: `Your question in ${courseTitle} has been answered.`,
               smsOptions: userPhone ? {
                  to: userPhone,
-                 message: `FarmWise: The instructor for ${courseTitle.substring(0, 30)} answered your question. Check the app to continue learning.`
+                 message: `AAN Academy: The instructor for ${courseTitle.substring(0, 30)} answered your question. Check the app to continue learning.`
               } : undefined,
               emailOptions: userEmail ? {
                  to: userEmail,
@@ -173,7 +173,7 @@ export class NotificationService {
               body: message,
               smsOptions: userPhone ? {
                  to: userPhone,
-                 message: `FarmWise: ${subject.substring(0, 20)} - ${message.substring(0, 100)}...`
+                 message: `AAN Academy: ${subject.substring(0, 20)} - ${message.substring(0, 100)}...`
               } : undefined,
               emailOptions: userEmail ? {
                  to: userEmail,
@@ -189,10 +189,10 @@ export class NotificationService {
               userId,
               type: 'INSTRUCTOR_APPLICATION_REVIEWED',
               title: 'Instructor Application Update',
-              body: `Your application to become a FarmWise instructor has been ${status}.`,
+              body: `Your application to become a AAN Academy instructor has been ${status}.`,
               smsOptions: userPhone ? {
                  to: userPhone,
-                 message: `FarmWise: Your instructor application has been ${status}. ${approved ? 'Log in to start building your first course!' : 'Check your email for details.'}`
+                 message: `AAN Academy: Your instructor application has been ${status}. ${approved ? 'Log in to start building your first course!' : 'Check your email for details.'}`
               } : undefined,
               emailOptions: userEmail ? {
                  to: userEmail,

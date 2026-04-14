@@ -46,7 +46,7 @@ export default function InstructorLayout() {
         <div className="flex items-center gap-2 px-4 h-16 border-b border-white/10">
           <Sprout className="w-6 h-6 text-[#4CAF50] flex-shrink-0" />
           {!collapsed && (
-            <span className="font-bold text-sm tracking-wide">FarmWise</span>
+            <span className="font-bold text-sm tracking-wide">AAN Academy</span>
           )}
         </div>
 
@@ -101,7 +101,7 @@ export default function InstructorLayout() {
             <div className="flex items-center justify-between px-4 h-16 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <Sprout className="w-6 h-6 text-[#4CAF50]" />
-                <span className="font-bold text-sm">FarmWise</span>
+                <span className="font-bold text-sm">AAN Academy</span>
               </div>
               <button onClick={() => setMobileOpen(false)} className="text-white/60 hover:text-white">
                 <X className="w-5 h-5" />

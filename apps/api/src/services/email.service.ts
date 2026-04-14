@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 
-const FROM = 'FarmWise <no-reply@myfarmwise.xyz>';
+const FROM = 'AAN Academy <no-reply@aan.academy>';
 
 // Lazy-init: Resend client created on first use so dotenv has loaded by then
 let _resend: Resend | null = null;
@@ -30,8 +30,8 @@ function layout(content: string): string {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
         <!-- Header -->
         <tr><td style="background:linear-gradient(135deg,#1A2E1A,#2E7D32);padding:32px 40px;text-align:center;">
-          <span style="font-size:28px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">🌱 FarmWise</span>
-          <p style="margin:8px 0 0;font-size:13px;color:rgba(255,255,255,0.7);">Growing Knowledge, Growing Harvests</p>
+          <span style="font-size:28px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">🌱 AAN Academy</span>
+          <p style="margin:8px 0 0;font-size:13px;color:rgba(255,255,255,0.7);">Empowering Agricultural Learning</p>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:36px 40px;">
@@ -39,8 +39,8 @@ function layout(content: string): string {
         </td></tr>
         <!-- Footer -->
         <tr><td style="padding:24px 40px;border-top:1px solid #e8e8e0;text-align:center;">
-          <p style="margin:0;font-size:12px;color:#8a8a7a;">FarmWise — Agricultural learning for East Africa</p>
-          <p style="margin:6px 0 0;font-size:11px;color:#a0a090;">You received this email because you signed up on FarmWise. If you didn't, you can safely ignore it.</p>
+          <p style="margin:0;font-size:12px;color:#8a8a7a;">AAN Academy — Agricultural learning for East Africa</p>
+          <p style="margin:6px 0 0;font-size:11px;color:#a0a090;">You received this email because you signed up on AAN Academy. If you didn't, you can safely ignore it.</p>
         </td></tr>
       </table>
     </td></tr>
@@ -55,9 +55,9 @@ export const emailService = {
     await send({
       from: FROM,
       to,
-      subject: 'Verify your FarmWise account',
+      subject: 'Verify your AAN Academy account',
       html: layout(`
-        <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#1B2B1B;">Welcome to FarmWise! 🎉</h2>
+        <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#1B2B1B;">Welcome to AAN Academy! 🎉</h2>
         <p style="margin:0 0 24px;font-size:15px;color:#5A6E5A;line-height:1.6;">
           You're one step away from joining thousands of farmers learning new skills. Click the button below to verify your email and get started.
         </p>
@@ -80,7 +80,7 @@ export const emailService = {
     await send({
       from: FROM,
       to,
-      subject: 'Reset your FarmWise password',
+      subject: 'Reset your AAN Academy password',
       html: layout(`
         <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#1B2B1B;">Password Reset</h2>
         <p style="margin:0 0 24px;font-size:15px;color:#5A6E5A;line-height:1.6;">

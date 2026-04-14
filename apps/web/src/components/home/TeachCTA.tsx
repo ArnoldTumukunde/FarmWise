@@ -22,7 +22,7 @@ export function TeachCTA() {
               Share your agricultural knowledge. Earn from it.
             </h2>
             <p className="text-green-100 mt-4">
-              Teach crop science, livestock management, or agribusiness. FarmWise
+              Teach crop science, livestock management, or agribusiness. AAN Academy
               connects you with thousands of farmers across East Africa.
             </p>
 

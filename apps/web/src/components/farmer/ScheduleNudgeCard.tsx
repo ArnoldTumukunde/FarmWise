@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlarmClock } from 'lucide-react';
 
-const DISMISSED_KEY = 'farmwise-schedule-nudge-dismissed';
+const DISMISSED_KEY = 'aan-schedule-nudge-dismissed';
 
 export function ScheduleNudgeCard() {
   const navigate = useNavigate();

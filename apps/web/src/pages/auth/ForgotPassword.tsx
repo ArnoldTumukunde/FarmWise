@@ -81,7 +81,7 @@ export default function ForgotPassword() {
           {/* Logo */}
           <div className="flex items-center justify-center gap-2 mb-2">
             <Leaf className="h-7 w-7 text-primary" />
-            <span className="text-2xl font-bold text-primary">FarmWise</span>
+            <span className="text-2xl font-bold text-primary">AAN Academy</span>
           </div>
 
           {sent ? (

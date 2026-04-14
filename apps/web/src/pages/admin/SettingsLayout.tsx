@@ -65,9 +65,9 @@ export function SettingsLayout() {
 
   // Settings state
   const [general, setGeneral] = useState({
-    platformName: 'FarmWise',
-    tagline: 'Agricultural Learning for Everyone',
-    supportEmail: 'support@farmwise.ug',
+    platformName: 'AAN Academy',
+    tagline: 'Empowering Agricultural Learning',
+    supportEmail: 'support@aan.academy',
   });
 
   const [payments, setPayments] = useState({

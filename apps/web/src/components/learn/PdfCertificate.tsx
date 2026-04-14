@@ -45,7 +45,7 @@ export async function generateCertificate(studentName: string, courseName: strin
         x: 100, y: 100, size: 16, font
     });
     
-    page.drawText('FarmWise Education', {
+    page.drawText('AAN Academy', {
         x: width - 250, y: 100, size: 16, font: fontBold
     });
     

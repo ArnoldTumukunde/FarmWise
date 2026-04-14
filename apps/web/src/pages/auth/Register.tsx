@@ -177,10 +177,10 @@ export default function Register() {
           {/* Logo */}
           <div className="flex items-center justify-center gap-2 mb-2">
             <Leaf className="h-7 w-7 text-primary" />
-            <span className="text-2xl font-bold text-primary">FarmWise</span>
+            <span className="text-2xl font-bold text-primary">AAN Academy</span>
           </div>
           <p className="text-sm text-text-muted text-center mt-1 mb-6">
-            Join 12,000+ farmers learning with FarmWise
+            Join 12,000+ farmers learning with AAN Academy
           </p>
 
           {/* Google OAuth */}
@@ -352,7 +352,7 @@ export default function Register() {
                   className="mt-0.5 accent-primary flex-shrink-0"
                 />
                 <span>
-                  I agree to FarmWise's{' '}
+                  I agree to AAN Academy's{' '}
                   <a href="/terms" className="text-primary underline">Terms of Service</a>
                   {' '}and{' '}
                   <a href="/privacy" className="text-primary underline">Privacy Policy</a>
@@ -479,7 +479,7 @@ export default function Register() {
                   className="mt-0.5 accent-primary flex-shrink-0"
                 />
                 <span>
-                  I agree to FarmWise's{' '}
+                  I agree to AAN Academy's{' '}
                   <a href="/terms" className="text-primary underline">Terms of Service</a>
                   {' '}and{' '}
                   <a href="/privacy" className="text-primary underline">Privacy Policy</a>

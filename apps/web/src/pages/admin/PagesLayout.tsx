@@ -239,7 +239,7 @@ export function PagesLayout() {
                 onChange={e => setForm(prev => ({ ...prev, content: e.target.value }))}
                 rows={20}
                 className="w-full px-3 py-2.5 text-sm rounded-lg border border-[#2E7D32]/20 bg-white text-[#1B2B1B] focus:outline-none focus:ring-2 focus:ring-[#2E7D32] font-mono"
-                placeholder="<h2>About FarmWise</h2><p>...</p>"
+                placeholder="<h2>About AAN Academy</h2><p>...</p>"
               />
             </div>
           </div>

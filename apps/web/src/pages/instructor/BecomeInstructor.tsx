@@ -119,7 +119,7 @@ export default function BecomeInstructor() {
             <CheckCircle className="h-16 w-16 text-[#2E7D32]" />
             <h2 className="text-2xl font-bold text-[#1B2B1B]">Congratulations!</h2>
             <p className="text-[#5A6E5A] text-center max-w-md">
-              Your instructor application has been approved. You can now create courses and start teaching on FarmWise.
+              Your instructor application has been approved. You can now create courses and start teaching on AAN Academy.
             </p>
             <Button
               onClick={() => navigate('/instructor')}
@@ -218,7 +218,7 @@ export default function BecomeInstructor() {
             {/* Motivation */}
             <div className="space-y-2">
               <Label htmlFor="motivation" className="text-[#1B2B1B]">
-                Why do you want to teach on FarmWise?
+                Why do you want to teach on AAN Academy?
               </Label>
               <textarea
                 id="motivation"

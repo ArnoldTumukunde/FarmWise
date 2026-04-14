@@ -51,7 +51,7 @@ export default function VerifyPhone() {
         body: JSON.stringify({ phone, otp }),
       });
       setAuth(res.user, res.accessToken);
-      toast.success('Phone verified! Welcome to FarmWise');
+      toast.success('Phone verified! Welcome to AAN Academy');
       navigate('/my-learning');
     } catch (err: any) {
       const status = err.status || err.statusCode;
@@ -146,7 +146,7 @@ export default function VerifyPhone() {
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
           <div className="flex items-center justify-center gap-2 mb-6">
             <Leaf className="h-7 w-7 text-primary" />
-            <span className="text-2xl font-bold text-primary">FarmWise</span>
+            <span className="text-2xl font-bold text-primary">AAN Academy</span>
           </div>
 
           <h2 className="text-xl font-bold text-text-base mb-1">Enter the code we sent to:</h2>

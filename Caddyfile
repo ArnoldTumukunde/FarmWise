@@ -1,4 +1,4 @@
-app.myfarmwise.xyz {
+aan.academy {
     encode zstd gzip
 
     handle /api/* {
@@ -8,4 +8,6 @@ app.myfarmwise.xyz {
     handle {
         reverse_proxy web:80
     }
+}
+   }
 }

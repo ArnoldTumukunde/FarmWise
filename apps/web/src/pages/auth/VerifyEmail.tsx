@@ -24,7 +24,7 @@ export default function VerifyEmail() {
     fetchApi('/auth/verify', { method: 'POST', body: JSON.stringify({ token }) })
       .then((res) => {
         setAuth(res.user, res.accessToken);
-        toast.success('Email verified! Welcome to FarmWise');
+        toast.success('Email verified! Welcome to AAN Academy');
         navigate('/my-learning');
       })
       .catch((err) => {
@@ -79,7 +79,7 @@ export default function VerifyEmail() {
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
             <div className="flex items-center justify-center gap-2 mb-6">
               <Leaf className="h-7 w-7 text-primary" />
-              <span className="text-2xl font-bold text-primary">FarmWise</span>
+              <span className="text-2xl font-bold text-primary">AAN Academy</span>
             </div>
             <div className="w-14 h-14 mx-auto rounded-full bg-red-50 flex items-center justify-center mb-4">
               <XCircle className="h-7 w-7 text-red-500" />
@@ -112,7 +112,7 @@ export default function VerifyEmail() {
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
           <div className="flex items-center justify-center gap-2 mb-6">
             <Leaf className="h-7 w-7 text-primary" />
-            <span className="text-2xl font-bold text-primary">FarmWise</span>
+            <span className="text-2xl font-bold text-primary">AAN Academy</span>
           </div>
 
           <div className="w-14 h-14 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4">

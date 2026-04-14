@@ -24,7 +24,7 @@ const testimonials = [
   {
     name: 'Fatuma Hassan',
     quote:
-      "My phone has no internet in the field. FarmWise still works — that's why I trust it.",
+      "My phone has no internet in the field. AAN Academy still works — that's why I trust it.",
     location: 'Moshi, Tanzania',
   },
 ];

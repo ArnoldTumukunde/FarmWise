@@ -52,7 +52,7 @@ export class StripeService {
             currency,
             product_data: {
               name: course.title,
-              description: `Access to ${course.title} on FarmWise`,
+              description: `Access to ${course.title} on AAN Academy`,
               images: course.thumbnailPublicId ? [`https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/${course.thumbnailPublicId}`] : [],
             },
             unit_amount: unitAmount,

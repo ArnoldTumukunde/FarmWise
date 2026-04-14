@@ -149,7 +149,7 @@ export function FeaturedInstructors() {
           Learn from Agricultural Experts
         </h2>
         <p className="text-[#5A6E5A] max-w-2xl mx-auto mt-3">
-          FarmWise instructors are extension officers, scientists, and experienced
+          AAN Academy instructors are extension officers, scientists, and experienced
           farmers who want to share what actually works.
         </p>
       </div>

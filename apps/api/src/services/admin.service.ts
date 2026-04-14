@@ -561,7 +561,7 @@ export class AdminService {
         // 3. SMS notifications via queue (<=160 chars enforced)
         if (wantsSms) {
             const { notificationQueue } = await import('../jobs/queue');
-            const smsMessage = `FarmWise: ${body}`.substring(0, 160);
+            const smsMessage = `AAN Academy: ${body}`.substring(0, 160);
             const smsUsers = users.filter(u => u.phone);
             for (const u of smsUsers) {
                 await notificationQueue.add('BROADCAST_SMS', {

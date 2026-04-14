@@ -1,7 +1,7 @@
 {
-  "app": { "name": "FarmWise", "tagline": "Growing Knowledge, Growing Harvests" },
+  "app": { "name": "AAN Academy", "tagline": "Empowering Agricultural Learning" },
   "nav": { "courses": "Courses", "myLibrary": "My Learning", "cart": "Cart", "login": "Sign In", "logout": "Logout", "instructor": "Instructor Dashboard", "admin": "Admin" },
-  "auth": { "login": "Login to FarmWise", "register": "Create Account", "email": "Email", "password": "Password", "phone": "Phone Number", "forgotPassword": "Forgot Password?", "resetPassword": "Reset Password", "useEmail": "Use Email", "usePhone": "Use Phone", "noAccount": "Don't have an account?", "hasAccount": "Already have an account?", "signUp": "Sign Up", "signIn": "Sign In" },
+  "auth": { "login": "Login to AAN Academy", "register": "Create Account", "email": "Email", "password": "Password", "phone": "Phone Number", "forgotPassword": "Forgot Password?", "resetPassword": "Reset Password", "useEmail": "Use Email", "usePhone": "Use Phone", "noAccount": "Don't have an account?", "hasAccount": "Already have an account?", "signUp": "Sign Up", "signIn": "Sign In" },
   "catalog": { "search": "Search farming courses...", "allCategories": "All Categories", "noResults": "No courses found matching your criteria.", "free": "Free", "enrollNow": "Enroll Now", "students": "students", "sections": "sections" },
   "course": { "curriculum": "Curriculum", "description": "Description", "instructor": "Instructor", "reviews": "Reviews", "overview": "Overview", "notes": "Notes", "qa": "Q&A" },
   "cart": { "title": "Shopping Cart", "empty": "Your cart is empty", "checkout": "Secure Checkout", "total": "Total", "originalPrice": "Original Price", "discount": "Discount", "browseCourses": "Browse Courses", "moneyBack": "30-Day Money-Back Guarantee" },

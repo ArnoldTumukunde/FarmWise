@@ -14,9 +14,9 @@ export class CmsService {
         // Return structured settings with defaults for anything not in DB
         return {
             general: {
-                platformName: map['general.platformName'] ?? 'FarmWise',
-                tagline: map['general.tagline'] ?? 'Growing Knowledge, Growing Harvests',
-                supportEmail: map['general.supportEmail'] ?? 'support@farmwise.co',
+                platformName: map['general.platformName'] ?? 'AAN Academy',
+                tagline: map['general.tagline'] ?? 'Empowering Agricultural Learning',
+                supportEmail: map['general.supportEmail'] ?? 'support@aan.academy',
             },
             payments: {
                 platformFeePercent: map['payments.platformFeePercent'] ?? 30,

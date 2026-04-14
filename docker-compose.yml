@@ -27,7 +27,7 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-farmwise}:${POSTGRES_PASSWORD:-farmwise_secret}@db:5432/${POSTGRES_DB:-farmwise}?schema=public
       - REDIS_URL=redis://redis:6379
       - PORT=4000
-      - FRONTEND_URL=${FRONTEND_URL:-https://app.myfarmwise.xyz}
+      - FRONTEND_URL=${FRONTEND_URL:-https://aan.academy}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
@@ -73,3 +73,4 @@ volumes:
   redis_data:
   caddy_data:
   caddy_config:
+onfig:

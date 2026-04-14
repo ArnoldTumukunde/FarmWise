@@ -17,9 +17,9 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
       },
       manifest: {
-        name: 'FarmWise Learning',
-        short_name: 'FarmWise',
-        description: 'Growing Knowledge, Growing Harvests',
+        name: 'AAN Academy',
+        short_name: 'AAN Academy',
+        description: 'Empowering Agricultural Learning',
         theme_color: '#2E7D32',
         background_color: '#FAFAF5',
         display: 'standalone',

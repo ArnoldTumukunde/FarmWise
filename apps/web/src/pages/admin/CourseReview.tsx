@@ -64,7 +64,7 @@ const checklistItems = [
   { id: 'structure', label: 'At least 2 sections and 5 lectures' },
   { id: 'video', label: 'Video quality is acceptable' },
   { id: 'plagiarism', label: 'No plagiarism detected' },
-  { id: 'appropriate', label: 'Content is appropriate for FarmWise' },
+  { id: 'appropriate', label: 'Content is appropriate for AAN Academy' },
 ];
 
 /* ── Main component ───────────────────────────────────── */

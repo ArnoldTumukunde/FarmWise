@@ -137,10 +137,10 @@ async function main() {
     // ─── Dummy Instructor (Teacher) ──────────────────────────────────────────
     console.log('Seeding dummy instructor...');
     const instructor = await prisma.user.upsert({
-        where: { email: 'instructor@farmwise.test' },
+        where: { email: 'instructor@aan.test' },
         update: {},
         create: {
-            email: 'instructor@farmwise.test',
+            email: 'instructor@aan.test',
             passwordHash: DUMMY_PASSWORD_HASH,
             role: 'INSTRUCTOR',
             isVerified: true,
@@ -161,10 +161,10 @@ async function main() {
     // ─── Dummy Student (Farmer) ──────────────────────────────────────────────
     console.log('Seeding dummy student...');
     const student = await prisma.user.upsert({
-        where: { email: 'farmer@farmwise.test' },
+        where: { email: 'farmer@aan.test' },
         update: {},
         create: {
-            email: 'farmer@farmwise.test',
+            email: 'farmer@aan.test',
             passwordHash: DUMMY_PASSWORD_HASH,
             role: 'FARMER',
             isVerified: true,
@@ -185,16 +185,16 @@ async function main() {
     // ─── Dummy Admin ─────────────────────────────────────────────────────────
     console.log('Seeding dummy admin...');
     const admin = await prisma.user.upsert({
-        where: { email: 'admin@farmwise.test' },
+        where: { email: 'admin@aan.test' },
         update: {},
         create: {
-            email: 'admin@farmwise.test',
+            email: 'admin@aan.test',
             passwordHash: DUMMY_PASSWORD_HASH,
             role: 'ADMIN',
             isVerified: true,
             profile: {
                 create: {
-                    displayName: 'FarmWise Admin',
+                    displayName: 'AAN Academy Admin',
                     headline: 'Platform Administrator',
                 },
             },
@@ -406,9 +406,9 @@ Whether you're a beginner or experienced farmer, this course provides actionable
     console.log(`  Coupon TESTFARM50 (50% off) created.`);
 
     console.log('\n✅ Seed complete! Test credentials:');
-    console.log('  Instructor: instructor@farmwise.test / Test1234!');
-    console.log('  Student:    farmer@farmwise.test    / Test1234!');
-    console.log('  Admin:      admin@farmwise.test     / Test1234!');
+    console.log('  Instructor: instructor@aan.test / Test1234!');
+    console.log('  Student:    farmer@aan.test    / Test1234!');
+    console.log('  Admin:      admin@aan.test     / Test1234!');
 }
 
 main()

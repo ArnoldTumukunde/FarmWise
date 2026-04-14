@@ -4,7 +4,7 @@ test.describe('Login Flow', () => {
     test('should render login page and handle invalid login', async ({ page }) => {
         await page.goto('/login');
 
-        await expect(page.getByRole('heading', { name: /Login to FarmWise/i })).toBeVisible();
+        await expect(page.getByRole('heading', { name: /Login to AAN Academy/i })).toBeVisible();
 
         await page.getByLabel(/Email/i).fill('test@farmer.com');
         await page.getByLabel(/Password/i).fill('wrongpassword');

@@ -35,7 +35,7 @@ interface Category {
   slug: string;
 }
 
-const VIEW_MODE_KEY = 'farmwise-my-learning-view';
+const VIEW_MODE_KEY = 'aan-my-learning-view';
 
 export default function MyLearning() {
   const [searchParams, setSearchParams] = useSearchParams();

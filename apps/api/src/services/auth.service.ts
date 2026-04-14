@@ -36,7 +36,7 @@ export class AuthService {
         try {
             await sms.send({
                 to: [phone],
-                message: `Your FarmWise verification code is ${otp}. Expires in 15 minutes.`
+                message: `Your AAN Academy verification code is ${otp}. Expires in 15 minutes.`
             });
         } catch (error) {
             console.error("SMS Error:", error);
@@ -185,7 +185,7 @@ export class AuthService {
         try {
             await sms.send({
                 to: [phone],
-                message: `Your FarmWise password reset code is ${otp}. Expires in 15 minutes.`
+                message: `Your AAN Academy password reset code is ${otp}. Expires in 15 minutes.`
             });
         } catch (error) {
             console.error("SMS Error:", error);
@@ -262,7 +262,7 @@ export class AuthService {
         try {
             await sms.send({
                 to: [phone],
-                message: `Your FarmWise verification code is ${otp}. Expires in 15 minutes.`
+                message: `Your AAN Academy verification code is ${otp}. Expires in 15 minutes.`
             });
         } catch (error) {
             console.error("SMS Error:", error);

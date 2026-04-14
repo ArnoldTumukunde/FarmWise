@@ -228,7 +228,7 @@ function Navbar() {
           className="flex items-center gap-2 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md"
         >
           <Leaf className="h-7 w-7 text-primary" />
-          <span className="text-xl font-bold text-primary hidden sm:inline">FarmWise</span>
+          <span className="text-xl font-bold text-primary hidden sm:inline">AAN Academy</span>
         </Link>
 
         {/* Categories dropdown (desktop) */}
@@ -926,13 +926,13 @@ function Footer() {
       <div className="max-w-7xl mx-auto px-4 flex flex-col items-center gap-3 text-center">
         <div className="flex items-center gap-2">
           <Leaf className="h-6 w-6 text-primary-light" />
-          <span className="text-lg font-bold">FarmWise</span>
+          <span className="text-lg font-bold">AAN Academy</span>
         </div>
         <p className="text-sm text-gray-400">
           Empowering farmers with knowledge to grow smarter.
         </p>
         <p className="text-xs text-gray-500">
-          &copy; {new Date().getFullYear()} FarmWise. All rights reserved.
+          &copy; {new Date().getFullYear()} AAN Academy. All rights reserved.
         </p>
       </div>
     </footer>

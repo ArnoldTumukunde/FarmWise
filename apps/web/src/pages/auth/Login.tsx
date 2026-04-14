@@ -115,7 +115,7 @@ export default function Login() {
           {/* Logo */}
           <div className="flex items-center justify-center gap-2 mb-2">
             <Leaf className="h-7 w-7 text-primary" />
-            <span className="text-2xl font-bold text-primary">FarmWise</span>
+            <span className="text-2xl font-bold text-primary">AAN Academy</span>
           </div>
           <h1 className="text-2xl font-bold text-text-base text-center">Welcome back</h1>
           <p className="text-sm text-text-muted text-center mt-1 mb-6">Sign in to continue learning</p>
@@ -315,7 +315,7 @@ export default function Login() {
 
           {/* Sign up link */}
           <p className="text-sm text-text-muted text-center mt-6">
-            New to FarmWise?{' '}
+            New to AAN Academy?{' '}
             <Link to="/register" className="text-primary font-semibold hover:underline">
               Create a free account →
             </Link>

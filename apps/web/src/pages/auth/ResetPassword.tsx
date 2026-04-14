@@ -52,7 +52,7 @@ export default function ResetPassword() {
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
             <div className="flex items-center justify-center gap-2 mb-6">
               <Leaf className="h-7 w-7 text-primary" />
-              <span className="text-2xl font-bold text-primary">FarmWise</span>
+              <span className="text-2xl font-bold text-primary">AAN Academy</span>
             </div>
             <h1 className="text-2xl font-bold text-text-base mb-2">Invalid reset link</h1>
             <p className="text-sm text-text-muted mb-6">
@@ -118,7 +118,7 @@ export default function ResetPassword() {
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
             <div className="flex items-center justify-center gap-2 mb-6">
               <Leaf className="h-7 w-7 text-primary" />
-              <span className="text-2xl font-bold text-primary">FarmWise</span>
+              <span className="text-2xl font-bold text-primary">AAN Academy</span>
             </div>
             <div className="w-14 h-14 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <CheckCircle2 className="h-7 w-7 text-primary" />
@@ -145,7 +145,7 @@ export default function ResetPassword() {
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Leaf className="h-7 w-7 text-primary" />
-            <span className="text-2xl font-bold text-primary">FarmWise</span>
+            <span className="text-2xl font-bold text-primary">AAN Academy</span>
           </div>
           <h1 className="text-2xl font-bold text-text-base text-center">Set new password</h1>
           <p className="text-sm text-text-muted text-center mt-1 mb-6">

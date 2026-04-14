@@ -3,8 +3,8 @@ import { ChevronDown } from 'lucide-react';
 
 const faqs = [
   {
-    q: 'What is FarmWise?',
-    a: 'FarmWise is an agricultural learning platform built for farmers in East Africa. Browse expert-led courses on crops, livestock, soil health, and more — with full offline download support so you can learn even without internet.',
+    q: 'What is AAN Academy?',
+    a: 'AAN Academy is an agricultural learning platform built for farmers in East Africa. Browse expert-led courses on crops, livestock, soil health, and more — with full offline download support so you can learn even without internet.',
   },
   {
     q: 'Do I need internet to learn?',
@@ -15,12 +15,12 @@ const faqs = [
     a: 'Many courses are completely free. Paid courses range from UGX 5,000 to UGX 50,000. Pay once and own the course forever — no subscriptions.',
   },
   {
-    q: 'Can I teach on FarmWise?',
+    q: 'Can I teach on AAN Academy?',
     a: 'Yes! Apply for an instructor account and start creating courses. You keep 70% of every sale. We provide free tools to build, upload, and manage your courses.',
   },
   {
     q: 'What devices are supported?',
-    a: 'FarmWise works on any Android phone, iPhone, tablet, or computer. You can even install it as an app directly from your browser — no app store needed.',
+    a: 'AAN Academy works on any Android phone, iPhone, tablet, or computer. You can even install it as an app directly from your browser — no app store needed.',
   },
 ];
 

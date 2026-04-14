@@ -72,8 +72,8 @@ export function AdminLayout() {
           to="/"
           className="text-xl font-bold text-[#1B2B1B] flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32] rounded"
         >
-          <span className="w-8 h-8 bg-[#2E7D32] rounded-lg flex items-center justify-center text-white text-sm font-bold">FW</span>
-          <span>FarmWise</span>
+          <span className="w-8 h-8 bg-[#2E7D32] rounded-lg flex items-center justify-center text-white text-sm font-bold">AA</span>
+          <span>AAN Academy</span>
           <span className="text-[10px] bg-[#2E7D32] px-2 py-0.5 rounded-full text-white font-semibold uppercase tracking-wide">Admin</span>
         </Link>
       </div>
@@ -143,7 +143,7 @@ export function AdminLayout() {
         >
           <Menu size={24} />
         </button>
-        <span className="ml-3 font-bold text-[#1B2B1B]">FarmWise Admin</span>
+        <span className="ml-3 font-bold text-[#1B2B1B]">AAN Academy Admin</span>
       </div>
 
       {/* Mobile overlay */}

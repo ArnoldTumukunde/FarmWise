@@ -25,7 +25,7 @@ const columns = [
   {
     heading: 'Company',
     links: [
-      { label: 'About FarmWise', to: '#' },
+      { label: 'About AAN Academy', to: '#' },
       { label: 'Blog', to: '#' },
       { label: 'Press', to: '#' },
       { label: 'Careers', to: '#' },
@@ -73,13 +73,13 @@ export function HomeFooter() {
         <div className="border-t border-white/10 mt-8 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Leaf className="w-5 h-5 text-[#4CAF50]" />
-            <span className="font-bold text-lg">FarmWise</span>
+            <span className="font-bold text-lg">AAN Academy</span>
             <span className="text-gray-400 text-sm ml-2">
-              Growing Knowledge, Growing Harvests.
+              Empowering Agricultural Learning.
             </span>
           </div>
           <p className="text-gray-400 text-sm">
-            &copy; {new Date().getFullYear()} FarmWise. All rights reserved.
+            &copy; {new Date().getFullYear()} AAN Academy. All rights reserved.
           </p>
         </div>
       </div>
