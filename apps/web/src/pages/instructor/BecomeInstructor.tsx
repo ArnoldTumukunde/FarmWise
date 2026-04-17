@@ -22,7 +22,7 @@ const EXPERTISE_OPTIONS = [
 const BENEFITS = [
   'Free tools to create and manage courses',
   'Reach farmers across East Africa',
-  'Keep 70% of every sale',
+  'Earn while you sleep',
   'We handle payments and delivery',
 ];
 

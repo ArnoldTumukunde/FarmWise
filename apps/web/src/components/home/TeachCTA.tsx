@@ -4,7 +4,7 @@ import { useInView } from '@/hooks/useInView';
 import { anim } from '@/lib/animations';
 
 const perks = [
-  'Keep 70% of every sale',
+  'Earn while you sleep',
   'Free tools to build your course',
   'We handle payments & delivery',
 ];
