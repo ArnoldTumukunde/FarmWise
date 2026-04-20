@@ -158,6 +158,24 @@ export class AuthController {
         }
     }
 
+    static async changePassword(req: any, res: Response) {
+        try {
+            if (!req.user?.id) return res.status(401).json({ error: 'Unauthorized' });
+            const { currentPassword, newPassword } = req.body;
+            if (!currentPassword || !newPassword) {
+                return res.status(400).json({ error: 'currentPassword and newPassword required' });
+            }
+            if (typeof newPassword !== 'string' || newPassword.length < 8) {
+                return res.status(400).json({ error: 'Password must be at least 8 characters' });
+            }
+            await AuthService.changePassword(req.user.id, currentPassword, newPassword);
+            res.json({ success: true });
+        } catch (error: any) {
+            // Generic error to prevent account-enumeration / hint leaks
+            res.status(400).json({ error: error.message || 'Unable to change password' });
+        }
+    }
+
     static async resendOtp(req: Request, res: Response) {
         try {
             const { phone } = req.body;

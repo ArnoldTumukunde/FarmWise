@@ -3,7 +3,7 @@ import { fetchApi } from '../../lib/api';
 import { StickyNote, Trash2, Save, Loader2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
-export function NotesSection({ lectureId }: { lectureId: string }) {
+export function NotesSection({ lectureId, getCurrentTime }: { lectureId: string; getCurrentTime?: () => number }) {
   const [notes, setNotes] = useState<any[]>([]);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
@@ -29,9 +29,10 @@ export function NotesSection({ lectureId }: { lectureId: string }) {
     if (!content.trim()) return;
     setSaving(true);
     try {
+      const timestamp = getCurrentTime ? getCurrentTime() : undefined;
       await fetchApi(`/community/lectures/${lectureId}/notes`, {
         method: 'POST',
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, timestamp }),
       });
       setContent('');
       toast.success('Note saved');

@@ -98,11 +98,10 @@ export function CouponsLayout() {
         method: 'POST',
         body: JSON.stringify({
           code: formCode.trim().toUpperCase(),
-          discountType: formDiscountType,
-          discountValue: Number(formDiscount),
-          appliesTo: formAppliesTo,
-          ...(formAppliesTo !== 'all' && formTargetId ? { targetId: formTargetId } : {}),
-          ...(formUsageLimit ? { usageLimit: Number(formUsageLimit) } : {}),
+          type: formDiscountType,
+          value: Number(formDiscount),
+          ...(formAppliesTo === 'course' && formTargetId ? { courseId: formTargetId } : {}),
+          ...(formUsageLimit ? { maxUses: Number(formUsageLimit) } : {}),
           ...(formExpiry ? { expiresAt: new Date(formExpiry).toISOString() } : {}),
         }),
       });

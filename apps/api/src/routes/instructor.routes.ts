@@ -19,7 +19,9 @@ import {
   getAnalytics,
   reorderSections,
   reorderLectures,
-  reorderLecturesByCourse
+  reorderLecturesByCourse,
+  listAnnouncements,
+  createAnnouncement
 } from '../controllers/instructor.controller';
 
 const router = Router();
@@ -49,5 +51,7 @@ router.delete('/courses/:courseId/lectures/:lectureId', deleteLecture);
 router.post('/sections/:sectionId/lectures', createLecture);
 router.put('/sections/:sectionId/lectures/reorder', reorderLectures);
 router.put('/courses/:courseId/reorder-lectures', reorderLecturesByCourse);
+router.get('/courses/:courseId/announcements', listAnnouncements);
+router.post('/courses/:courseId/announcements', createAnnouncement);
 
 export default router;

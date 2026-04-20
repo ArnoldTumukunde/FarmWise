@@ -101,9 +101,9 @@ export const getCoursesForReview = async (req: AuthRequest, res: Response) => {
 
 export const moderateCourse = async (req: AuthRequest, res: Response) => {
     try {
-        const { action } = req.body;
-        const course = await AdminService.moderateCourse(req.params.id, action);
-        await CmsService.log(req.user!.id, `course.moderate.${action.toLowerCase()}`, 'Course', req.params.id, { action }, req.ip);
+        const { action, feedback } = req.body;
+        const course = await AdminService.moderateCourse(req.params.id, action, feedback);
+        await CmsService.log(req.user!.id, `course.moderate.${String(action).toLowerCase()}`, 'Course', req.params.id, { action, feedback }, req.ip);
         res.json({ course });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 };

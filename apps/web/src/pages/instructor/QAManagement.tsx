@@ -105,7 +105,7 @@ export default function QAManagement() {
     try {
       const res = await fetchApi(`/community/questions/${selectedQuestion.id}/answers`, {
         method: 'POST',
-        body: JSON.stringify({ body: replyText.trim() }),
+        body: JSON.stringify({ content: replyText.trim() }),
       });
       const newAnswer = res.answer || res;
       setQuestions((prev) =>

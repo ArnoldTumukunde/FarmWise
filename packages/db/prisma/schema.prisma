@@ -37,6 +37,7 @@ model User {
   answerUpvotes  AnswerUpvote[]
   reviewUpvotes  ReviewUpvote[]
   wishlist       Wishlist[]
+  announcements  Announcement[]
   auditLogs      AuditLog[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -59,6 +60,8 @@ model Profile {
   avatarPublicId        String?
   farmLocation          String?
   cropSpecialities      String[]
+  farmSize              String?
+  yearsExperience       Int?
   website               String?
   stripeConnectAccountId String? // Set when instructor completes Stripe Connect Express onboarding
   stripeConnectStatus   String? // 'pending' | 'active' — from Stripe account.capabilities
@@ -85,6 +88,7 @@ model Course {
   isOfflineEnabled     Boolean      @default(true)
   isFeatured           Boolean      @default(false) // Set by admin; drives [FEATURED] badge in course card
   sponsoredUntil       DateTime?    // If set and > now(), course shows as "Sponsored" in carousels
+  moderationFeedback   String?      @db.Text // Admin's rejection reason shown to instructor
   // Denormalized counters — update atomically in the service layer on each relevant event:
   averageRating        Decimal      @default(0) @db.Decimal(3, 2)
   reviewCount          Int          @default(0)
@@ -101,6 +105,7 @@ model Course {
   cartItems            CartItem[]
   wishlists            Wishlist[]
   coupons              Coupon[]
+  announcements        Announcement[]
   outcomes             String[]
   requirements         String[]
   createdAt            DateTime     @default(now())
@@ -325,6 +330,7 @@ model Coupon {
   maxUses   Int?
   usedCount Int        @default(0)
   expiresAt DateTime?
+  isActive  Boolean    @default(true)
   courseId  String?
   course    Course?    @relation(fields: [courseId], references: [id])
   carts     Cart[]
@@ -336,6 +342,22 @@ model Coupon {
 enum CouponType {
   PERCENTAGE
   FIXED
+}
+
+// ─── ANNOUNCEMENTS ─────────────────────────────────────────────────────────
+
+model Announcement {
+  id           String   @id @default(cuid())
+  courseId     String
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  instructorId String
+  instructor   User     @relation(fields: [instructorId], references: [id])
+  subject      String
+  body         String   @db.Text
+  sentTo       String   @default("ALL") // ALL | COMPLETED | IN_PROGRESS
+  createdAt    DateTime @default(now())
+
+  @@index([courseId, createdAt])
 }
 
 // ─── LEARNING & PROGRESS ───────────────────────────────────────────────────

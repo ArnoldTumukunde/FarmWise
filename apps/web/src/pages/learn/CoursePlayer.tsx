@@ -457,7 +457,7 @@ export function CoursePlayer() {
                 <QASection lectureId={activeLecture.id} />
               )}
               {activeTab === 'notes' && activeLecture && (
-                <NotesSection lectureId={activeLecture.id} />
+                <NotesSection lectureId={activeLecture.id} getCurrentTime={() => Math.floor(watchedSecondsRef.current)} />
               )}
             </div>
 

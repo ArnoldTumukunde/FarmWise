@@ -17,13 +17,17 @@ router.get('/', requireAuth, async (req: AuthRequest, res: Response) => {
 // PUT /profile - update current user's profile
 router.put('/', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const { displayName, headline, bio, farmLocation, cropSpecialities, website, avatarPublicId } = req.body;
+    const { displayName, headline, bio, farmLocation, cropSpecialities, primaryCrops, farmSize, yearsExperience, website, avatarPublicId } = req.body;
+    // Accept `primaryCrops` as alias for `cropSpecialities`
+    const crops = cropSpecialities ?? primaryCrops;
     const profile = await ProfileService.updateMyProfile(req.user!.id, {
       displayName,
       headline,
       bio,
       farmLocation,
-      cropSpecialities,
+      cropSpecialities: crops,
+      farmSize,
+      yearsExperience: yearsExperience === '' || yearsExperience == null ? null : Number(yearsExperience),
       website,
       avatarPublicId,
     });

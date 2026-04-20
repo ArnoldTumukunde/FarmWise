@@ -142,6 +142,23 @@ export class AuthService {
         return await bcrypt.hash(password, 12); // cost >= 12 as per hard constraint 4
     }
 
+    /** Change password — requires current password verification */
+    static async changePassword(userId: string, currentPassword: string, newPassword: string) {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user || !user.passwordHash) {
+            throw new Error('Cannot change password for this account');
+        }
+        const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+        if (!ok) {
+            throw new Error('Current password is incorrect');
+        }
+        const newHash = await bcrypt.hash(newPassword, 12);
+        await prisma.user.update({
+            where: { id: userId },
+            data: { passwordHash: newHash },
+        });
+    }
+
     static generateTokens(userId: string, role: string) {
         const JWT_SECRET = process.env.JWT_SECRET as string;
         const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET as string;

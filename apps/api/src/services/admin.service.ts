@@ -187,15 +187,21 @@ export class AdminService {
         });
     }
 
-    static async moderateCourse(courseId: string, action: 'APPROVE' | 'REJECT') {
-        const status = action === 'APPROVE' ? 'PUBLISHED' : 'DRAFT';
-        return prisma.course.update({
+    static async moderateCourse(courseId: string, action: string, feedback?: string) {
+        const normalized = String(action || '').toUpperCase();
+        if (normalized !== 'APPROVE' && normalized !== 'REJECT') {
+            throw new Error('Invalid action: must be APPROVE or REJECT');
+        }
+        const isApprove = normalized === 'APPROVE';
+        const course = await prisma.course.update({
              where: { id: courseId },
-             data: { 
-                 status,
-                 ...(action === 'APPROVE' ? { publishedAt: new Date() } : {})
+             data: {
+                 status: isApprove ? 'PUBLISHED' : 'DRAFT',
+                 ...(isApprove ? { publishedAt: new Date() } : {}),
+                 ...(feedback && !isApprove ? { moderationFeedback: feedback } : {}),
              }
         });
+        return course;
     }
 
     static async toggleCourseFeatured(courseId: string, isFeatured: boolean) {

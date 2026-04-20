@@ -211,3 +211,55 @@ export const reorderLecturesByCourse = async (req: AuthRequest, res: Response) =
     res.status(403).json({ error: error.message });
   }
 };
+
+// ── Announcements ──────────────────────────────────────────────────────────
+
+async function assertCourseOwned(userId: string, courseId: string) {
+  const course = await prisma.course.findFirst({
+    where: { id: courseId, instructorId: userId },
+    select: { id: true, title: true },
+  });
+  if (!course) throw new Error('Course not found or access denied');
+  return course;
+}
+
+export const listAnnouncements = async (req: AuthRequest, res: Response) => {
+  try {
+    await assertCourseOwned(req.user!.id, req.params.courseId);
+    const announcements = await prisma.announcement.findMany({
+      where: { courseId: req.params.courseId },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ announcements });
+  } catch (error: any) {
+    res.status(403).json({ error: error.message });
+  }
+};
+
+export const createAnnouncement = async (req: AuthRequest, res: Response) => {
+  try {
+    const { subject, body, sentTo } = req.body;
+    if (!subject?.trim() || !body?.trim()) {
+      return res.status(400).json({ error: 'subject and body are required' });
+    }
+    if (subject.length > 200) return res.status(400).json({ error: 'Subject too long' });
+    if (body.length > 5000) return res.status(400).json({ error: 'Body too long' });
+    const allowedAudiences = ['ALL', 'COMPLETED', 'IN_PROGRESS'];
+    const audience = allowedAudiences.includes(sentTo) ? sentTo : 'ALL';
+
+    const course = await assertCourseOwned(req.user!.id, req.params.courseId);
+
+    const announcement = await prisma.announcement.create({
+      data: {
+        courseId: course.id,
+        instructorId: req.user!.id,
+        subject: subject.trim(),
+        body: body.trim(),
+        sentTo: audience,
+      },
+    });
+    res.json({ announcement });
+  } catch (error: any) {
+    res.status(403).json({ error: error.message });
+  }
+};

@@ -37,6 +37,8 @@ export class ProfileService {
       bio?: string;
       farmLocation?: string;
       cropSpecialities?: string[];
+      farmSize?: string;
+      yearsExperience?: number | null;
       website?: string;
       avatarPublicId?: string;
     }
@@ -49,6 +51,8 @@ export class ProfileService {
         ...(data.bio !== undefined && { bio: data.bio }),
         ...(data.farmLocation !== undefined && { farmLocation: data.farmLocation }),
         ...(data.cropSpecialities !== undefined && { cropSpecialities: data.cropSpecialities }),
+        ...(data.farmSize !== undefined && { farmSize: data.farmSize }),
+        ...(data.yearsExperience !== undefined && { yearsExperience: data.yearsExperience }),
         ...(data.website !== undefined && { website: data.website }),
         ...(data.avatarPublicId !== undefined && { avatarPublicId: data.avatarPublicId }),
       },
@@ -59,6 +63,8 @@ export class ProfileService {
         bio: data.bio,
         farmLocation: data.farmLocation,
         cropSpecialities: data.cropSpecialities || [],
+        farmSize: data.farmSize,
+        yearsExperience: data.yearsExperience,
         website: data.website,
         avatarPublicId: data.avatarPublicId,
       },
