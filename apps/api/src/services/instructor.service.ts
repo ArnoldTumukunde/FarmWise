@@ -13,30 +13,45 @@ export class InstructorService {
     });
   }
 
-  static async createCourse(instructorId: string, data: { title: string; categoryId: string }) {
-    // Generate a slug from the title
-    const baseSlug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-    let slug = baseSlug;
+  static async createCourse(instructorId: string, data: {
+    title: string;
+    categoryId: string;
+    subtitle?: string;
+    level?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'ALL_LEVELS';
+    language?: string;
+    outcomes?: string[];
+    requirements?: string[];
+    price?: number;
+  }) {
+    if (!data.title?.trim()) throw new Error('Title required');
+    if (!data.categoryId) throw new Error('Category required');
 
-    // Robust unique slug generation
-    let isUnique = false;
-    while (!isUnique) {
+    // Verify category exists
+    const cat = await prisma.category.findUnique({ where: { id: data.categoryId } });
+    if (!cat) throw new Error('Invalid category');
+
+    // Generate unique slug from title + random suffix
+    const baseSlug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    let slug = `${baseSlug}-${Math.random().toString(36).substring(2, 8)}`;
+    for (let i = 0; i < 3; i++) {
       const existing = await prisma.course.findUnique({ where: { slug } });
-      if (!existing) {
-        isUnique = true;
-      } else {
-        const randomStr = Math.random().toString(36).substring(2, 8);
-        slug = `${baseSlug}-${randomStr}`;
-      }
+      if (!existing) break;
+      slug = `${baseSlug}-${Math.random().toString(36).substring(2, 8)}`;
     }
 
     return prisma.course.create({
       data: {
-        title: data.title,
+        title: data.title.trim(),
         slug,
         description: '',
+        subtitle: data.subtitle,
         categoryId: data.categoryId,
         instructorId,
+        level: (data.level as any) || 'BEGINNER',
+        language: data.language || 'English',
+        outcomes: data.outcomes || [],
+        requirements: data.requirements || [],
+        price: data.price ?? 0,
       },
       include: {
         category: true,

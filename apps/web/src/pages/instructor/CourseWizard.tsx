@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -17,18 +17,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const CATEGORIES = [
-  'Crop Farming',
-  'Livestock',
-  'Soil Science',
-  'Irrigation',
-  'Pest Management',
-  'Post-Harvest',
-  'Agribusiness',
-  'Organic Farming',
-  'Aquaculture',
-  'Forestry',
-];
+interface CategoryOpt { id: string; name: string; }
 
 const LEVELS = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'ALL_LEVELS'];
 
@@ -105,8 +94,15 @@ export default function CourseWizard() {
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [category, setCategory] = useState('');
+  const [categories, setCategories] = useState<CategoryOpt[]>([]);
   const [level, setLevel] = useState('');
   const [language, setLanguage] = useState('English');
+
+  useEffect(() => {
+    fetchApi('/courses/categories')
+      .then((res: any) => setCategories(res.categories || res.data || res || []))
+      .catch(() => toast.error('Failed to load categories'));
+  }, []);
 
   // Step 2
   const [targetAudience, setTargetAudience] = useState<string[]>(['', '', '']);
@@ -209,12 +205,11 @@ export default function CourseWizard() {
     const body = {
       title: title.trim(),
       subtitle: subtitle.trim() || undefined,
-      category,
-      level,
+      categoryId: category,
+      level: level || undefined,
       language,
-      targetAudience: targetAudience.filter((s) => s.trim()),
       outcomes: outcomes.filter((s) => s.trim()),
-      prerequisites: prerequisites.filter((s) => s.trim()),
+      requirements: prerequisites.filter((s) => s.trim()),
       price: finalPrice,
     };
 
@@ -332,8 +327,8 @@ export default function CourseWizard() {
                   className="w-full rounded-md border border-[#2E7D32]/10 px-3 py-2 text-sm bg-white text-[#1B2B1B] focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/20"
                 >
                   <option value="">Select a category</option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
               </div>
