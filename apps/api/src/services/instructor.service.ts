@@ -335,6 +335,20 @@ export class InstructorService {
     });
   }
 
+  /** ADMIN-only: directly publish or unpublish a course without review. */
+  static async setStatus(courseId: string, userId: string, userRole: string, status: 'DRAFT' | 'PUBLISHED') {
+    if (userRole !== 'ADMIN') throw new Error('Only admins can directly change publish status');
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course) throw new Error('Course not found');
+    return prisma.course.update({
+      where: { id: courseId },
+      data: {
+        status,
+        ...(status === 'PUBLISHED' && !course.publishedAt ? { publishedAt: new Date() } : {}),
+      },
+    });
+  }
+
   static async createSection(instructorId: string, courseId: string, title: string) {
     const course = await prisma.course.findUnique({ where: { id: courseId }, include: { sections: true } });
     if (!course || course.instructorId !== instructorId) throw new Error('Access denied');

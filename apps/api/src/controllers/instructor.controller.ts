@@ -105,6 +105,18 @@ export const getCourseAnalytics = async (req: AuthRequest, res: Response) => {
 
 export const submitForReview = async (req: AuthRequest, res: Response) => {
   try {
+    const { status } = req.body || {};
+    // ADMIN shortcut: directly set PUBLISHED or DRAFT
+    if (status === 'PUBLISHED' || status === 'DRAFT') {
+      const course = await InstructorService.setStatus(
+        req.params.courseId,
+        req.user!.id,
+        req.user!.role,
+        status,
+      );
+      return res.json({ course });
+    }
+    // Default path: submit draft for review
     const course = await InstructorService.submitForReview(req.params.courseId, req.user!.id);
     res.json({ course });
   } catch (error: any) {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchApi, API_URL } from '@/lib/api';
+import { useAuthStore } from '@/store/useAuthStore';
 import { uploadToCloudinary } from '@/lib/upload';
 import { UploadProgressBar } from '@/components/ui/UploadProgress';
 import { formatUGX, cloudinaryImageUrl } from '@/lib/utils';
@@ -843,6 +844,8 @@ export default function CourseBuilder() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [thumbProgress, setThumbProgress] = useState<import('@/lib/upload').UploadProgress | null>(null);
+  const userRole = useAuthStore((s) => s.user?.role);
+  const isAdmin = userRole === 'ADMIN';
 
   // New outcome / requirement inputs
   const [newOutcome, setNewOutcome] = useState('');
@@ -952,7 +955,7 @@ export default function CourseBuilder() {
     if (!confirm('Submit this course for review? You will not be able to edit it until the review is complete.')) return;
     setSubmitting(true);
     try {
-      const res = await fetchApi(`/instructor/courses/${id}/status`, {
+      await fetchApi(`/instructor/courses/${id}/status`, {
         method: 'PUT',
         body: JSON.stringify({ status: 'UNDER_REVIEW' }),
       });
@@ -960,6 +963,41 @@ export default function CourseBuilder() {
       toast.success('Course submitted for review!');
     } catch (e: any) {
       toast.error(e.message || 'Failed to submit for review');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /* ---- Admin: publish / unpublish directly ---- */
+  const handleAdminPublish = async () => {
+    if (!confirm('Publish this course now? It will be visible to all users.')) return;
+    setSubmitting(true);
+    try {
+      await fetchApi(`/instructor/courses/${id}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: 'PUBLISHED' }),
+      });
+      setCourse((prev) => prev ? { ...prev, status: 'PUBLISHED' } : prev);
+      toast.success('Course published');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to publish');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAdminUnpublish = async () => {
+    if (!confirm('Move this course back to draft? It will be hidden from users.')) return;
+    setSubmitting(true);
+    try {
+      await fetchApi(`/instructor/courses/${id}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: 'DRAFT' }),
+      });
+      setCourse((prev) => prev ? { ...prev, status: 'DRAFT' } : prev);
+      toast.success('Course moved to draft');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to unpublish');
     } finally {
       setSubmitting(false);
     }
@@ -1418,20 +1456,46 @@ export default function CourseBuilder() {
               <Eye size={14} className="mr-1.5" />
               Preview
             </Button>
-            <Button
-              size="sm"
-              className="bg-[#2E7D32] hover:bg-[#2E7D32]/90 focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2 disabled:opacity-50"
-              onClick={handleSubmitForReview}
-              disabled={!canSubmit || submitting}
-            >
-              {submitting ? (
-                <Loader2 size={14} className="animate-spin mr-1.5" />
-              ) : (
-                <Send size={14} className="mr-1.5" />
-              )}
-              <span className="hidden sm:inline">Submit for Review</span>
-              <span className="sm:hidden">Submit</span>
-            </Button>
+            {isAdmin && course.status !== 'PUBLISHED' && (
+              <Button
+                size="sm"
+                className="bg-[#2E7D32] hover:bg-[#2E7D32]/90 disabled:opacity-50"
+                onClick={handleAdminPublish}
+                disabled={submitting}
+              >
+                {submitting ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Send size={14} className="mr-1.5" />}
+                <span className="hidden sm:inline">Publish Now</span>
+                <span className="sm:hidden">Publish</span>
+              </Button>
+            )}
+            {isAdmin && course.status === 'PUBLISHED' && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                onClick={handleAdminUnpublish}
+                disabled={submitting}
+              >
+                {submitting ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
+                Unpublish
+              </Button>
+            )}
+            {!isAdmin && (
+              <Button
+                size="sm"
+                className="bg-[#2E7D32] hover:bg-[#2E7D32]/90 focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2 disabled:opacity-50"
+                onClick={handleSubmitForReview}
+                disabled={!canSubmit || submitting}
+              >
+                {submitting ? (
+                  <Loader2 size={14} className="animate-spin mr-1.5" />
+                ) : (
+                  <Send size={14} className="mr-1.5" />
+                )}
+                <span className="hidden sm:inline">Submit for Review</span>
+                <span className="sm:hidden">Submit</span>
+              </Button>
+            )}
           </div>
         </div>
       </header>
