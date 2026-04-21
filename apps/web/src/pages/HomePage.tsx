@@ -10,6 +10,7 @@ import { Testimonials } from '@/components/home/Testimonials';
 import { TeachCTA } from '@/components/home/TeachCTA';
 import { FAQ } from '@/components/home/FAQ';
 import { HomeFooter } from '@/components/home/HomeFooter';
+import { Sponsors } from '@/components/home/Sponsors';
 
 /* ── Crop-row divider between major sections ── */
 function CropRowDivider() {
@@ -40,6 +41,7 @@ export default function HomePage() {
       <HeroBanner />
       <CategoryCarousel />
       <StatsStrip stats={stats} />
+      <Sponsors />
       <CropRowDivider />
       <FeaturedCourses />
       <CropRowDivider />

@@ -9,6 +9,7 @@ import { BecauseYouEnrolledStrip } from '@/components/home/BecauseYouEnrolledStr
 import { ShortCoursesStrip } from '@/components/home/ShortCoursesStrip';
 import { TopicsRecommendedSection } from '@/components/home/TopicsRecommendedSection';
 import { TrustedByFarmersBar } from '@/components/home/TrustedByFarmersBar';
+import { Sponsors } from '@/components/home/Sponsors';
 
 export default function LoggedInHomePage() {
   return (
@@ -48,7 +49,10 @@ export default function LoggedInHomePage() {
         <TopicsRecommendedSection />
       </div>
 
-      {/* 11. Trusted by bar — full-width, last before footer */}
+      {/* 11. Sponsors — subtle logo strip */}
+      <Sponsors />
+
+      {/* 12. Trusted by bar — full-width, last before footer */}
       <TrustedByFarmersBar />
     </div>
   );
