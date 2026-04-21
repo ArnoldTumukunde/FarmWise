@@ -6,6 +6,7 @@ import {
   BarChart3,
   MessageSquare,
   CreditCard,
+  UserCircle,
   ChevronLeft,
   ChevronRight,
   Menu,
@@ -21,6 +22,7 @@ const navItems = [
   { to: '/instructor/analytics', icon: BarChart3, label: 'Performance', end: false },
   { to: '/instructor/communication', icon: MessageSquare, label: 'Communication', end: false },
   { to: '/instructor/payouts', icon: CreditCard, label: 'Payouts', end: false },
+  { to: '/settings', icon: UserCircle, label: 'Profile', end: false },
 ];
 
 export default function InstructorLayout() {
