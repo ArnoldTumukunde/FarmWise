@@ -1,10 +1,10 @@
 .agent
-.env
 .claude
-node_modules
-dist/
+.env
 AGENT_NOTES.md
 CLAUDE.md
-course_detail_page.md
 ammendments.md
-homepage_ammendments.md
+course_detail_page.md
+dist/
+homepage_ammendments.md.DS_Store
+node_modules
