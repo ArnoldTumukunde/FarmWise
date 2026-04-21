@@ -455,9 +455,9 @@ const SortableLecture = ({
       return;
     }
 
-    // Warn if > 500MB
-    if (file.size > 500 * 1024 * 1024) {
-      if (!confirm('This video is over 500MB. Upload may take a while. Continue?')) return;
+    // Warn if > 2GB (chunked upload handles large files, but confirm long upload)
+    if (file.size > 2 * 1024 * 1024 * 1024) {
+      if (!confirm(`This video is ${(file.size / 1024 / 1024 / 1024).toFixed(1)}GB. Upload may take a while. Continue?`)) return;
     }
 
     setUploadingVideo(true);
@@ -644,7 +644,7 @@ const SortableLecture = ({
                 >
                   <Upload size={20} className="mx-auto mb-1 text-gray-400" />
                   <p className="text-sm text-[#5A6E5A]">Click to upload a video</p>
-                  <p className="text-xs text-gray-400 mt-0.5">MP4, MOV, WebM — max 500MB recommended</p>
+                  <p className="text-xs text-gray-400 mt-0.5">MP4, MOV, WebM — large files upload in chunks</p>
                 </button>
               )}
             </div>
