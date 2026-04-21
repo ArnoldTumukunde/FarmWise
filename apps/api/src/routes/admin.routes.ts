@@ -4,7 +4,7 @@ import {
     getDashboard, getUsers, getApplications, reviewApplication,
     updateUserRole, suspendUser, deleteUser,
     listAllCourses, getCoursesForReview, moderateCourse, toggleFeatured, setSponsored,
-    deleteCourse, unpublishCourse,
+    deleteCourse, unpublishCourse, publishCourse,
     getFlaggedReviews, moderateReview, deleteReview,
     getUserById,
     getReviewsModeration, getQuestionsModeration,
@@ -43,6 +43,7 @@ router.post('/courses/:id/moderate', moderateCourse);
 router.post('/courses/:id/featured', toggleFeatured);
 router.post('/courses/:id/sponsored', setSponsored);
 router.post('/courses/:id/unpublish', unpublishCourse);
+router.post('/courses/:id/publish', publishCourse);
 router.delete('/courses/:id', deleteCourse);
 
 // Reviews

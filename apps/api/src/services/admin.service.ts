@@ -179,6 +179,18 @@ export class AdminService {
         });
     }
 
+    static async publishCourse(courseId: string) {
+        const course = await prisma.course.findUnique({ where: { id: courseId } });
+        if (!course) throw new Error('Course not found');
+        return prisma.course.update({
+            where: { id: courseId },
+            data: {
+                status: 'PUBLISHED',
+                ...(course.publishedAt ? {} : { publishedAt: new Date() }),
+            },
+        });
+    }
+
     static async listCoursesForReview() {
         return prisma.course.findMany({
             where: { status: 'UNDER_REVIEW' },

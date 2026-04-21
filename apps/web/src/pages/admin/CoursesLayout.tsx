@@ -152,6 +152,20 @@ export function CoursesLayout() {
     }
   };
 
+  const publishCourse = async (id: string) => {
+    if (!window.confirm('Publish this course? It will be visible to all users.')) return;
+    setActionLoading(id + 'PUBLISH');
+    try {
+      await fetchApi(`/admin/courses/${id}/publish`, { method: 'POST' });
+      toast.success('Course published');
+      loadCourses(statusFilter, search, page);
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to publish');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const toggleFeatured = async (id: string, currentlyFeatured: boolean) => {
     setActionLoading(id + 'FEATURED');
     try {
@@ -255,14 +269,24 @@ export function CoursesLayout() {
 
     // DRAFT
     return (
-      <button
-        onClick={() => deleteCourse(course.id, course.title)}
-        disabled={!!actionLoading}
-        className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
-      >
-        {actionLoading === course.id + 'DELETE' ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-        Delete
-      </button>
+      <>
+        <button
+          onClick={() => publishCourse(course.id)}
+          disabled={!!actionLoading}
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg bg-[#2E7D32] text-white hover:bg-[#2E7D32]/90 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2"
+        >
+          {actionLoading === course.id + 'PUBLISH' ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+          Publish Now
+        </button>
+        <button
+          onClick={() => deleteCourse(course.id, course.title)}
+          disabled={!!actionLoading}
+          className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+          title="Delete course"
+        >
+          {actionLoading === course.id + 'DELETE' ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+        </button>
+      </>
     );
   };
 

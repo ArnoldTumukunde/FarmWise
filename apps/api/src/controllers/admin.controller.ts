@@ -85,6 +85,14 @@ export const unpublishCourse = async (req: AuthRequest, res: Response) => {
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 };
 
+export const publishCourse = async (req: AuthRequest, res: Response) => {
+    try {
+        const course = await AdminService.publishCourse(req.params.id);
+        await CmsService.log(req.user!.id, 'course.publish', 'Course', req.params.id, {}, req.ip);
+        res.json({ course });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+};
+
 export const deleteReview = async (req: AuthRequest, res: Response) => {
     try {
         await AdminService.deleteReview(req.params.id);
