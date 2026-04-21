@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchApi } from '@/lib/api';
+import { uploadToCloudinary, type UploadProgress } from '@/lib/upload';
+import { UploadProgressBar } from '@/components/ui/UploadProgress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -89,6 +91,7 @@ export default function CourseWizard() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [thumbProgress, setThumbProgress] = useState<UploadProgress | null>(null);
 
   // Step 1
   const [title, setTitle] = useState('');
@@ -232,11 +235,16 @@ export default function CourseWizard() {
           formData.append('folder', sigRes.folder || 'farmwise');
           if (sigRes.publicId) formData.append('public_id', sigRes.publicId);
 
-          await fetch(`https://api.cloudinary.com/v1_1/${sigRes.cloudName}/image/upload`, {
-            method: 'POST',
-            body: formData,
+          setThumbProgress({ loaded: 0, total: thumbnailFile.size, percent: 0, etaSeconds: null, bytesPerSec: 0 });
+          await uploadToCloudinary({
+            cloudName: sigRes.cloudName,
+            resourceType: 'image',
+            formData,
+            onProgress: setThumbProgress,
           });
+          setThumbProgress(null);
         } catch {
+          setThumbProgress(null);
           toast.error('Course created but thumbnail upload failed');
         }
       }
@@ -568,6 +576,10 @@ export default function CourseWizard() {
             </Button>
           )}
         </div>
+
+        {thumbProgress && (
+          <UploadProgressBar progress={thumbProgress} label="Uploading thumbnail" />
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchApi, API_URL } from '@/lib/api';
+import { uploadToCloudinary } from '@/lib/upload';
+import { UploadProgressBar } from '@/components/ui/UploadProgress';
 import { formatUGX, cloudinaryImageUrl } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -409,6 +411,9 @@ const SortableLecture = ({
   const [deleting, setDeleting] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoProgress, setVideoProgress] = useState<import('@/lib/upload').UploadProgress | null>(null);
+  const [videoAbort, setVideoAbort] = useState<AbortController | null>(null);
+  const [videoFileName, setVideoFileName] = useState('');
   const [updatingField, setUpdatingField] = useState(false);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -456,11 +461,13 @@ const SortableLecture = ({
     }
 
     setUploadingVideo(true);
-    try {
-      // 1. Get signature (type=video for HLS eager transform)
-      const signRes = await fetchApi('/media/sign?folder=videos&type=video');
+    setVideoFileName(file.name);
+    setVideoProgress({ loaded: 0, total: file.size, percent: 0, etaSeconds: null, bytesPerSec: 0 });
+    const abort = new AbortController();
+    setVideoAbort(abort);
 
-      // 2. Upload to Cloudinary
+    try {
+      const signRes = await fetchApi('/media/sign?folder=videos&type=video');
       const formData = new FormData();
       formData.append('file', file);
       formData.append('api_key', signRes.apiKey);
@@ -471,14 +478,14 @@ const SortableLecture = ({
       if (signRes.eager_async) formData.append('eager_async', String(signRes.eager_async));
 
       const cloudName = signRes.cloudName || CLOUD_NAME;
-      const uploadRes = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
-        { method: 'POST', body: formData }
-      );
-      if (!uploadRes.ok) throw new Error('Cloudinary upload failed');
-      const uploadData = await uploadRes.json();
+      const uploadData = await uploadToCloudinary({
+        cloudName,
+        resourceType: 'video',
+        formData,
+        onProgress: setVideoProgress,
+        signal: abort.signal,
+      });
 
-      // 3. Save videoPublicId to lecture
       const publicId = uploadData.public_id;
       const duration = Math.round(uploadData.duration || 0);
       await fetchApi(`/instructor/courses/${courseId}/lectures/${lecture.id}`, {
@@ -488,12 +495,19 @@ const SortableLecture = ({
       toast.success('Video uploaded! HLS transcoding will complete shortly.');
       onReload();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to upload video');
+      if (err.message !== 'Upload cancelled') {
+        toast.error(err.message || 'Failed to upload video');
+      }
     } finally {
       setUploadingVideo(false);
+      setVideoProgress(null);
+      setVideoAbort(null);
+      setVideoFileName('');
       if (videoInputRef.current) videoInputRef.current.value = '';
     }
   };
+
+  const cancelVideoUpload = () => videoAbort?.abort();
 
   const handleTogglePreview = async () => {
     setUpdatingField(true);
@@ -595,7 +609,13 @@ const SortableLecture = ({
                 <span className="text-xs font-medium text-[#5A6E5A]">Video</span>
                 <span className={`text-xs font-medium ${vStatus.color}`}>{vStatus.text}</span>
               </div>
-              {lecture.videoPublicId ? (
+              {uploadingVideo && videoProgress ? (
+                <UploadProgressBar
+                  progress={videoProgress}
+                  label={`Uploading ${videoFileName}`}
+                  onCancel={cancelVideoUpload}
+                />
+              ) : lecture.videoPublicId ? (
                 <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
                   <PlayCircle size={20} className="text-[#2E7D32] shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -622,18 +642,9 @@ const SortableLecture = ({
                   disabled={uploadingVideo}
                   className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[#2E7D32]/50 transition-colors cursor-pointer"
                 >
-                  {uploadingVideo ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <Loader2 size={16} className="animate-spin text-[#2E7D32]" />
-                      <span className="text-sm text-[#5A6E5A]">Uploading video...</span>
-                    </div>
-                  ) : (
-                    <>
-                      <Upload size={20} className="mx-auto mb-1 text-gray-400" />
-                      <p className="text-sm text-[#5A6E5A]">Click to upload a video</p>
-                      <p className="text-xs text-gray-400 mt-0.5">MP4, MOV, WebM — max 500MB recommended</p>
-                    </>
-                  )}
+                  <Upload size={20} className="mx-auto mb-1 text-gray-400" />
+                  <p className="text-sm text-[#5A6E5A]">Click to upload a video</p>
+                  <p className="text-xs text-gray-400 mt-0.5">MP4, MOV, WebM — max 500MB recommended</p>
                 </button>
               )}
             </div>
@@ -831,6 +842,7 @@ export default function CourseBuilder() {
   // Thumbnail upload
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [thumbProgress, setThumbProgress] = useState<import('@/lib/upload').UploadProgress | null>(null);
 
   // New outcome / requirement inputs
   const [newOutcome, setNewOutcome] = useState('');
@@ -898,11 +910,10 @@ export default function CourseBuilder() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setThumbProgress({ loaded: 0, total: file.size, percent: 0, etaSeconds: null, bytesPerSec: 0 });
     try {
-      // 1. Get signature from backend
       const signRes = await fetchApi('/media/sign?folder=thumbnails');
 
-      // 2. Upload to Cloudinary
       const formData = new FormData();
       formData.append('file', file);
       formData.append('api_key', signRes.apiKey);
@@ -912,12 +923,12 @@ export default function CourseBuilder() {
       if (signRes.eager) formData.append('eager', signRes.eager);
 
       const cloudName = signRes.cloudName || CLOUD_NAME;
-      const uploadRes = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        { method: 'POST', body: formData }
-      );
-      if (!uploadRes.ok) throw new Error('Cloudinary upload failed');
-      const uploadData = await uploadRes.json();
+      const uploadData = await uploadToCloudinary({
+        cloudName,
+        resourceType: 'image',
+        formData,
+        onProgress: setThumbProgress,
+      });
 
       // 3. Save publicId to course
       const publicId = uploadData.public_id.replace(/^farmwise\//, '');
@@ -931,7 +942,7 @@ export default function CourseBuilder() {
       toast.error(err.message || 'Failed to upload thumbnail');
     } finally {
       setUploading(false);
-      // Reset file input so the same file can be re-selected
+      setThumbProgress(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -1276,11 +1287,14 @@ export default function CourseBuilder() {
       {/* Thumbnail */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-[#1B2B1B]">Thumbnail</Label>
+        {uploading && thumbProgress && (
+          <UploadProgressBar progress={thumbProgress} label="Uploading thumbnail" compact />
+        )}
         <div
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => !uploading && fileInputRef.current?.click()}
           className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#2E7D32]/50 transition-colors cursor-pointer relative"
         >
-          {uploading && (
+          {uploading && !thumbProgress && (
             <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-lg z-10">
               <Loader2 size={24} className="animate-spin text-[#2E7D32]" />
             </div>

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { fetchApi } from '@/lib/api';
+import { uploadToCloudinary, type UploadProgress } from '@/lib/upload';
+import { UploadProgressBar } from '@/components/ui/UploadProgress';
 import { cloudinaryImageUrl } from '@/lib/utils';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +25,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarProgress, setAvatarProgress] = useState<UploadProgress | null>(null);
 
   // Form fields
   const [displayName, setDisplayName] = useState('');
@@ -64,11 +67,10 @@ export default function SettingsPage() {
     if (!file) return;
 
     setUploadingAvatar(true);
+    setAvatarProgress({ loaded: 0, total: file.size, percent: 0, etaSeconds: null, bytesPerSec: 0 });
     try {
-      // 1. Get signature
       const signRes = await fetchApi('/media/sign?folder=avatars&type=image');
 
-      // 2. Upload to Cloudinary
       const formData = new FormData();
       formData.append('file', file);
       formData.append('api_key', signRes.apiKey);
@@ -78,12 +80,12 @@ export default function SettingsPage() {
       if (signRes.eager) formData.append('eager', signRes.eager);
 
       const cloudName = signRes.cloudName || CLOUD_NAME;
-      const uploadRes = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        { method: 'POST', body: formData }
-      );
-      if (!uploadRes.ok) throw new Error('Cloudinary upload failed');
-      const uploadData = await uploadRes.json();
+      const uploadData = await uploadToCloudinary({
+        cloudName,
+        resourceType: 'image',
+        formData,
+        onProgress: setAvatarProgress,
+      });
       if (!uploadData?.public_id) throw new Error('Upload failed - no public ID returned');
 
       // 3. Extract publicId (strip the "farmwise/" prefix if present)
@@ -104,7 +106,7 @@ export default function SettingsPage() {
       toast.error(err.message || 'Avatar upload failed');
     } finally {
       setUploadingAvatar(false);
-      // Reset file input so the same file can be re-selected
+      setAvatarProgress(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -193,6 +195,11 @@ export default function SettingsPage() {
                     </>
                   )}
                 </Button>
+                {uploadingAvatar && avatarProgress && (
+                  <div className="mt-3">
+                    <UploadProgressBar progress={avatarProgress} label="Uploading avatar" compact />
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

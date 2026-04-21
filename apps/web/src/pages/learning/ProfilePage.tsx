@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { fetchApi } from '../../lib/api';
+import { uploadToCloudinary, type UploadProgress } from '../../lib/upload';
+import { UploadProgressBar } from '../../components/ui/UploadProgress';
 import { cloudinaryImageUrl, formatUGX } from '../../lib/utils';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
@@ -80,6 +82,7 @@ export default function ProfilePage() {
   const [region, setRegion] = useState('');
   const [avatarPublicId, setAvatarPublicId] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarProgress, setAvatarProgress] = useState<UploadProgress | null>(null);
 
   // Notification prefs
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(() => {
@@ -164,6 +167,7 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingAvatar(true);
+    setAvatarProgress({ loaded: 0, total: file.size, percent: 0, etaSeconds: null, bytesPerSec: 0 });
     try {
       const signRes = await fetchApi('/media/sign?folder=avatars&type=image');
       const formData = new FormData();
@@ -175,12 +179,12 @@ export default function ProfilePage() {
       if (signRes.eager) formData.append('eager', signRes.eager);
 
       const cloudName = signRes.cloudName || CLOUD_NAME;
-      const uploadRes = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        { method: 'POST', body: formData }
-      );
-      if (!uploadRes.ok) throw new Error('Upload failed');
-      const uploadData = await uploadRes.json();
+      const uploadData = await uploadToCloudinary({
+        cloudName,
+        resourceType: 'image',
+        formData,
+        onProgress: setAvatarProgress,
+      });
       let publicId: string = uploadData.public_id;
       if (publicId.startsWith('farmwise/')) publicId = publicId.slice('farmwise/'.length);
 
@@ -194,6 +198,7 @@ export default function ProfilePage() {
       toast.error(err.message || 'Avatar upload failed');
     } finally {
       setUploadingAvatar(false);
+      setAvatarProgress(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -392,6 +397,11 @@ export default function ProfilePage() {
                     )}
                   </button>
                 </div>
+                {uploadingAvatar && avatarProgress && (
+                  <div className="mt-3">
+                    <UploadProgressBar progress={avatarProgress} label="Uploading avatar" compact />
+                  </div>
+                )}
               </div>
             </div>
 
