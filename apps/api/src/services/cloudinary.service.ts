@@ -73,14 +73,12 @@ export class CloudinaryStorageService implements StorageService {
       folder: `farmwise/${folder}`,
     };
 
-    // HLS eager transform for video uploads
-    // async=true: process the entire upload asynchronously (required for video > 100MB)
-    // eager=sp_hd/m3u8 + eager_async=true: generate HLS manifest after upload completes
-    if (resourceType === 'video') {
-      paramsToSign.eager = 'sp_hd/m3u8';
-      paramsToSign.eager_async = true;
-      paramsToSign.async = true;
-    }
+    // Video uploads: skip eager HLS transform here — Cloudinary's
+    // "maximum online video manipulation size" limit (100MB) still
+    // rejects large videos even with eager_async=true. Instead, HLS
+    // manifests are generated on-demand via transformation URLs
+    // (getSignedVideoUrl/getHlsUrl below) which uses streaming profile
+    // delivery — no pre-processing required on upload.
 
     // Fallback secret parsing for missing CLOUDINARY_API_SECRET if CLOUDINARY_URL format used
     let apiSecret = process.env.CLOUDINARY_API_SECRET;
@@ -100,9 +98,6 @@ export class CloudinaryStorageService implements StorageService {
       signature,
       timestamp,
       folder: paramsToSign.folder,
-      eager: paramsToSign.eager,
-      eager_async: paramsToSign.eager_async,
-      async: paramsToSign.async,
       api_key: apiKey,
       resourceType,
     };
