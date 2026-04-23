@@ -73,10 +73,13 @@ export class CloudinaryStorageService implements StorageService {
       folder: `farmwise/${folder}`,
     };
 
-    // Only add HLS eager transform for video uploads
+    // HLS eager transform for video uploads
+    // async=true: process the entire upload asynchronously (required for video > 100MB)
+    // eager=sp_hd/m3u8 + eager_async=true: generate HLS manifest after upload completes
     if (resourceType === 'video') {
       paramsToSign.eager = 'sp_hd/m3u8';
       paramsToSign.eager_async = true;
+      paramsToSign.async = true;
     }
 
     // Fallback secret parsing for missing CLOUDINARY_API_SECRET if CLOUDINARY_URL format used
@@ -99,6 +102,7 @@ export class CloudinaryStorageService implements StorageService {
       folder: paramsToSign.folder,
       eager: paramsToSign.eager,
       eager_async: paramsToSign.eager_async,
+      async: paramsToSign.async,
       api_key: apiKey,
       resourceType,
     };

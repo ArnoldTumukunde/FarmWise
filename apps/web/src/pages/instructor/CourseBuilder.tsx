@@ -477,6 +477,7 @@ const SortableLecture = ({
       formData.append('folder', signRes.folder);
       if (signRes.eager) formData.append('eager', signRes.eager);
       if (signRes.eager_async) formData.append('eager_async', String(signRes.eager_async));
+      if (signRes.async) formData.append('async', String(signRes.async));
 
       const cloudName = signRes.cloudName || CLOUD_NAME;
       const uploadData = await uploadToCloudinary({
