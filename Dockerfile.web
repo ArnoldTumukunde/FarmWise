@@ -6,6 +6,8 @@ RUN npm install -g turbo
 # Add env vars for build time if necessary
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
+ARG VITE_CLOUDINARY_CLOUD_NAME
+ENV VITE_CLOUDINARY_CLOUD_NAME=$VITE_CLOUDINARY_CLOUD_NAME
 
 COPY package.json package-lock.json turbo.json ./
 COPY apps/web/package.json ./apps/web/package.json

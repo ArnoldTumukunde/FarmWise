@@ -17,7 +17,7 @@ export function formatUGX(amount: number | string): string {
   return `UGX ${Math.round(num).toLocaleString('en-US')}`;
 }
 
-const CLOUDINARY_CLOUD = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME || 'dqewyo0kw';
+const CLOUDINARY_CLOUD = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME || 'dufizdkxg';
 
 /**
  * Build a Cloudinary image URL from a publicId stored in the database.

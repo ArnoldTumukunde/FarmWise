@@ -68,6 +68,7 @@ services:
       dockerfile: Dockerfile.web
       args:
         - VITE_API_URL=/api/v1
+        - VITE_CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
     restart: unless-stopped
     depends_on:
       - api
