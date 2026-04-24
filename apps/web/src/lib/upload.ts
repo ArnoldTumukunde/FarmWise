@@ -128,6 +128,10 @@ async function uploadChunked(opts: UploadOptions, url: string, file: File): Prom
     baseFormData.forEach((v, k) => { if (k !== 'file') chunkForm.append(k, v as any); });
     chunkForm.append('file', blob, file.name);
 
+    const chunkIdx = Math.floor(start / chunkSize);
+    const totalChunks = Math.ceil(total / chunkSize);
+    console.log(`[upload] chunk ${chunkIdx + 1}/${totalChunks} bytes ${start}-${end - 1}/${total}`);
+
     let attempt = 0;
     while (true) {
       try {
@@ -142,8 +146,8 @@ async function uploadChunked(opts: UploadOptions, url: string, file: File): Prom
         break;
       } catch (err: any) {
         attempt++;
+        console.error(`[upload] chunk ${chunkIdx + 1} attempt ${attempt} failed: ${err.message}`);
         if (attempt >= MAX_RETRIES || err.message === 'Upload cancelled') throw err;
-        // exponential backoff: 1s, 2s, 4s
         await new Promise((r) => setTimeout(r, 1000 * 2 ** (attempt - 1)));
       }
     }
