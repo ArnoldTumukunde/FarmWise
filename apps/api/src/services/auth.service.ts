@@ -163,8 +163,8 @@ export class AuthService {
         const JWT_SECRET = process.env.JWT_SECRET as string;
         const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET as string;
 
-        const accessToken = jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: '15m' });
-        const refreshToken = jwt.sign({ userId, role }, JWT_REFRESH_SECRET, { expiresIn: '7d' });
+        const accessToken = jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: '2h' });
+        const refreshToken = jwt.sign({ userId, role }, JWT_REFRESH_SECRET, { expiresIn: '30d' });
 
         return { accessToken, refreshToken, user: { id: userId, role } };
     }
