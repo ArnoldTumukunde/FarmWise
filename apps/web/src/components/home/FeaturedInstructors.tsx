@@ -44,15 +44,17 @@ function getInitials(name: string): string {
 
 /* ── Fallback instructors (used if API returns nothing) ── */
 
+// Photos: Unsplash — free for commercial use, no attribution required.
+// https://unsplash.com/license
 const FALLBACK_INSTRUCTORS: HomepageInstructor[] = [
-  { id: 'f1', name: 'Dr. Sarah Akello', title: 'Soil Scientist, Makerere University', avatarUrl: null, courseCount: 5, studentCount: 2341, averageRating: 4.8 },
-  { id: 'f2', name: 'John Mwangi', title: 'Livestock Management Expert', avatarUrl: null, courseCount: 3, studentCount: 1856, averageRating: 4.7 },
-  { id: 'f3', name: 'Grace Nakamya', title: 'Crop Science Researcher', avatarUrl: null, courseCount: 4, studentCount: 1420, averageRating: 4.9 },
-  { id: 'f4', name: 'Emmanuel Okoth', title: 'Agribusiness Consultant', avatarUrl: null, courseCount: 2, studentCount: 980, averageRating: 4.6 },
-  { id: 'f5', name: 'Fatuma Hassan', title: 'Organic Farming Specialist', avatarUrl: null, courseCount: 3, studentCount: 1200, averageRating: 4.8 },
-  { id: 'f6', name: 'David Ssempala', title: 'Extension Officer, NAADS', avatarUrl: null, courseCount: 6, studentCount: 3100, averageRating: 4.5 },
-  { id: 'f7', name: 'Alice Chemutai', title: 'Post-Harvest Technology Expert', avatarUrl: null, courseCount: 2, studentCount: 760, averageRating: 4.7 },
-  { id: 'f8', name: 'Peter Ochieng', title: 'Irrigation & Water Management', avatarUrl: null, courseCount: 4, studentCount: 1650, averageRating: 4.6 },
+  { id: 'f1', name: 'Dr. Sarah Akello',  title: 'Soil Scientist, Makerere University',     avatarUrl: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=600&h=600&fit=crop&crop=faces&q=80', courseCount: 5, studentCount: 2341, averageRating: 4.8 },
+  { id: 'f2', name: 'John Mwangi',       title: 'Livestock Management Expert',             avatarUrl: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?w=600&h=600&fit=crop&crop=faces&q=80', courseCount: 3, studentCount: 1856, averageRating: 4.7 },
+  { id: 'f3', name: 'Grace Nakamya',     title: 'Crop Science Researcher',                 avatarUrl: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=600&h=600&fit=crop&crop=faces&q=80', courseCount: 4, studentCount: 1420, averageRating: 4.9 },
+  { id: 'f4', name: 'Emmanuel Okoth',    title: 'Agribusiness Consultant',                 avatarUrl: 'https://images.unsplash.com/photo-1542178243-bc20204b769f?w=600&h=600&fit=crop&crop=faces&q=80', courseCount: 2, studentCount: 980,  averageRating: 4.6 },
+  { id: 'f5', name: 'Fatuma Hassan',     title: 'Organic Farming Specialist',              avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=600&h=600&fit=crop&crop=faces&q=80', courseCount: 3, studentCount: 1200, averageRating: 4.8 },
+  { id: 'f6', name: 'David Ssempala',    title: 'Extension Officer, NAADS',                avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=600&fit=crop&crop=faces&q=80', courseCount: 6, studentCount: 3100, averageRating: 4.5 },
+  { id: 'f7', name: 'Alice Chemutai',    title: 'Post-Harvest Technology Expert',          avatarUrl: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&h=600&fit=crop&crop=faces&q=80', courseCount: 2, studentCount: 760,  averageRating: 4.7 },
+  { id: 'f8', name: 'Peter Ochieng',     title: 'Irrigation & Water Management',           avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600&h=600&fit=crop&crop=faces&q=80', courseCount: 4, studentCount: 1650, averageRating: 4.6 },
 ];
 
 /* ── InstructorCard ── */
