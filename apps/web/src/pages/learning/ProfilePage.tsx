@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { fetchApi } from '../../lib/api';
 import { uploadToCloudinary, type UploadProgress } from '../../lib/upload';
 import { UploadProgressBar } from '../../components/ui/UploadProgress';
+import { AvatarCropper } from '../../components/ui/AvatarCropper';
 import { cloudinaryImageUrl, formatUGX } from '../../lib/utils';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
@@ -83,6 +84,7 @@ export default function ProfilePage() {
   const [avatarPublicId, setAvatarPublicId] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarProgress, setAvatarProgress] = useState<UploadProgress | null>(null);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
 
   // Notification prefs
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(() => {
@@ -163,15 +165,25 @@ export default function ProfilePage() {
     }
   }, [activeTab]);
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    setPendingAvatarFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const uploadCroppedAvatar = async (blob: Blob) => {
+    setPendingAvatarFile(null);
     setUploadingAvatar(true);
-    setAvatarProgress({ loaded: 0, total: file.size, percent: 0, etaSeconds: null, bytesPerSec: 0 });
+    setAvatarProgress({ loaded: 0, total: blob.size, percent: 0, etaSeconds: null, bytesPerSec: 0 });
     try {
       const signRes = await fetchApi('/media/sign?folder=avatars&type=image');
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', blob, 'avatar.jpg');
       formData.append('api_key', signRes.apiKey);
       formData.append('timestamp', String(signRes.timestamp));
       formData.append('signature', signRes.signature);
@@ -199,7 +211,6 @@ export default function ProfilePage() {
     } finally {
       setUploadingAvatar(false);
       setAvatarProgress(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -766,6 +777,14 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {pendingAvatarFile && (
+        <AvatarCropper
+          file={pendingAvatarFile}
+          onCancel={() => setPendingAvatarFile(null)}
+          onConfirm={uploadCroppedAvatar}
+        />
+      )}
     </div>
   );
 }

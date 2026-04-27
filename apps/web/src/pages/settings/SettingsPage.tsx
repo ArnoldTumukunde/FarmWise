@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { fetchApi } from '@/lib/api';
 import { uploadToCloudinary, type UploadProgress } from '@/lib/upload';
 import { UploadProgressBar } from '@/components/ui/UploadProgress';
+import { AvatarCropper } from '@/components/ui/AvatarCropper';
 import { cloudinaryImageUrl } from '@/lib/utils';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +27,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarProgress, setAvatarProgress] = useState<UploadProgress | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   // Form fields
   const [displayName, setDisplayName] = useState('');
@@ -62,17 +64,28 @@ export default function SettingsPage() {
     );
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Step 1: file picked → open cropper
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    setPendingFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
+  // Step 2: cropper confirmed → upload cropped Blob
+  const uploadCroppedAvatar = async (blob: Blob) => {
+    setPendingFile(null);
     setUploadingAvatar(true);
-    setAvatarProgress({ loaded: 0, total: file.size, percent: 0, etaSeconds: null, bytesPerSec: 0 });
+    setAvatarProgress({ loaded: 0, total: blob.size, percent: 0, etaSeconds: null, bytesPerSec: 0 });
     try {
       const signRes = await fetchApi('/media/sign?folder=avatars&type=image');
 
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', blob, 'avatar.jpg');
       formData.append('api_key', signRes.apiKey);
       formData.append('timestamp', String(signRes.timestamp));
       formData.append('signature', signRes.signature);
@@ -88,13 +101,9 @@ export default function SettingsPage() {
       });
       if (!uploadData?.public_id) throw new Error('Upload failed - no public ID returned');
 
-      // 3. Extract publicId (strip the "farmwise/" prefix if present)
       let publicId: string = uploadData.public_id;
-      if (publicId.startsWith('farmwise/')) {
-        publicId = publicId.slice('farmwise/'.length);
-      }
+      if (publicId.startsWith('farmwise/')) publicId = publicId.slice('farmwise/'.length);
 
-      // 4. Save to profile
       await fetchApi('/profile', {
         method: 'PUT',
         body: JSON.stringify({ avatarPublicId: publicId }),
@@ -107,7 +116,6 @@ export default function SettingsPage() {
     } finally {
       setUploadingAvatar(false);
       setAvatarProgress(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -335,6 +343,14 @@ export default function SettingsPage() {
           )}
         </Button>
       </form>
+
+      {pendingFile && (
+        <AvatarCropper
+          file={pendingFile}
+          onCancel={() => setPendingFile(null)}
+          onConfirm={uploadCroppedAvatar}
+        />
+      )}
     </div>
   );
 }
