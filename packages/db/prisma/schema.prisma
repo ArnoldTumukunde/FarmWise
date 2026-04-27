@@ -55,6 +55,7 @@ model Profile {
   userId                String   @unique
   user                  User     @relation(fields: [userId], references: [id])
   displayName           String
+  username              String?  @unique
   headline              String?
   bio                   String?
   avatarPublicId        String?

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Sprout, BookOpen, Users } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { fetchApi } from '@/lib/api';
 
 interface Slide {
   id: string;
@@ -21,7 +22,22 @@ export function HeroCarousel() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const u = user as any;
-  const firstName = u?.name?.split(' ')[0] || u?.email?.split('@')[0] || 'Farmer';
+  const [profileName, setProfileName] = useState<string>('');
+
+  useEffect(() => {
+    if (!user) return;
+    fetchApi('/profile')
+      .then((res: any) => {
+        const p = res.profile || res;
+        setProfileName(p.username || p.displayName || '');
+      })
+      .catch(() => { /* fall back to other sources below */ });
+  }, [user]);
+
+  const firstName = profileName.split(' ')[0]
+    || u?.name?.split(' ')[0]
+    || u?.email?.split('@')[0]
+    || 'Farmer';
 
   const slides: Slide[] = [
     {

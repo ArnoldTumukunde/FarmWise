@@ -33,6 +33,7 @@ export class ProfileService {
     userId: string,
     data: {
       displayName?: string;
+      username?: string | null;
       headline?: string;
       bio?: string;
       farmLocation?: string;
@@ -47,6 +48,7 @@ export class ProfileService {
       where: { userId },
       update: {
         ...(data.displayName !== undefined && { displayName: data.displayName }),
+        ...(data.username !== undefined && { username: data.username }),
         ...(data.headline !== undefined && { headline: data.headline }),
         ...(data.bio !== undefined && { bio: data.bio }),
         ...(data.farmLocation !== undefined && { farmLocation: data.farmLocation }),
@@ -59,6 +61,7 @@ export class ProfileService {
       create: {
         userId,
         displayName: data.displayName || 'User',
+        username: data.username,
         headline: data.headline,
         bio: data.bio,
         farmLocation: data.farmLocation,
@@ -79,6 +82,7 @@ export class ProfileService {
       where: { userId },
       select: {
         displayName: true,
+        username: true,
         headline: true,
         bio: true,
         avatarPublicId: true,

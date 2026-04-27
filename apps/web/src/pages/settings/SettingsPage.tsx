@@ -31,6 +31,7 @@ export default function SettingsPage() {
 
   // Form fields
   const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
   const [headline, setHeadline] = useState('');
   const [bio, setBio] = useState('');
   const [avatarPublicId, setAvatarPublicId] = useState('');
@@ -44,6 +45,7 @@ export default function SettingsPage() {
       .then((data: any) => {
         const p = data.profile || data;
         setDisplayName(p.displayName || '');
+        setUsername(p.username || '');
         setHeadline(p.headline || '');
         setBio(p.bio || '');
         setAvatarPublicId(p.avatarPublicId || '');
@@ -127,6 +129,7 @@ export default function SettingsPage() {
         method: 'PUT',
         body: JSON.stringify({
           displayName: displayName || null,
+          username: username.trim().toLowerCase() || null,
           headline: headline || null,
           bio: bio || null,
           farmLocation: farmLocation || null,
@@ -223,14 +226,26 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="displayName" className="text-[#1B2B1B]">Display Name</Label>
+              <Label htmlFor="displayName" className="text-[#1B2B1B]">Full Name</Label>
               <Input
                 id="displayName"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Your display name"
+                placeholder="Your full name"
                 className="bg-[#FAFAF5] border-gray-200 text-[#1B2B1B] focus-visible:ring-[#2E7D32]"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="username" className="text-[#1B2B1B]">Username</Label>
+              <Input
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                placeholder="e.g. john_doe"
+                maxLength={20}
+                className="bg-[#FAFAF5] border-gray-200 text-[#1B2B1B] focus-visible:ring-[#2E7D32]"
+              />
+              <p className="text-xs text-[#5A6E5A]">3-20 characters. Lowercase letters, numbers, and underscores only.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="headline" className="text-[#1B2B1B]">Headline</Label>

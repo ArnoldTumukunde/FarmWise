@@ -17,11 +17,26 @@ router.get('/', requireAuth, async (req: AuthRequest, res: Response) => {
 // PUT /profile - update current user's profile
 router.put('/', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const { displayName, headline, bio, farmLocation, cropSpecialities, primaryCrops, farmSize, yearsExperience, website, avatarPublicId } = req.body;
-    // Accept `primaryCrops` as alias for `cropSpecialities`
+    const { displayName, username, headline, bio, farmLocation, cropSpecialities, primaryCrops, farmSize, yearsExperience, website, avatarPublicId } = req.body;
     const crops = cropSpecialities ?? primaryCrops;
+
+    // Validate username if provided: 3-20 chars, lowercase letters/numbers/underscore
+    let cleanUsername: string | null | undefined = undefined;
+    if (username !== undefined) {
+      if (username === null || username === '') {
+        cleanUsername = null;
+      } else if (typeof username === 'string') {
+        const u = username.trim().toLowerCase();
+        if (!/^[a-z0-9_]{3,20}$/.test(u)) {
+          return res.status(400).json({ error: 'Username must be 3-20 chars: lowercase letters, numbers, underscore' });
+        }
+        cleanUsername = u;
+      }
+    }
+
     const profile = await ProfileService.updateMyProfile(req.user!.id, {
       displayName,
+      username: cleanUsername,
       headline,
       bio,
       farmLocation,
@@ -33,6 +48,9 @@ router.put('/', requireAuth, async (req: AuthRequest, res: Response) => {
     });
     res.json({ profile });
   } catch (error: any) {
+    if (error?.code === 'P2002' && error?.meta?.target?.includes('username')) {
+      return res.status(409).json({ error: 'Username already taken' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
