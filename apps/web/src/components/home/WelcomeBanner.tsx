@@ -6,7 +6,7 @@ import { cloudinaryImageUrl } from '@/lib/utils';
 
 export function WelcomeBanner() {
   const { user, token } = useAuthStore();
-  const [profile, setProfile] = useState<{ displayName?: string; avatarPublicId?: string | null } | null>(null);
+  const [profile, setProfile] = useState<{ displayName?: string; username?: string | null; avatarPublicId?: string | null } | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -17,9 +17,9 @@ export function WelcomeBanner() {
 
   if (!user) return null;
 
-  const displayName = profile?.displayName && profile.displayName !== 'User'
-    ? profile.displayName.split(' ')[0]
-    : 'Farmer';
+  const displayName = profile?.username
+    || (profile?.displayName && profile.displayName !== 'User' ? profile.displayName.split(' ')[0] : '')
+    || 'Farmer';
 
   const initial = displayName.charAt(0).toUpperCase();
 
