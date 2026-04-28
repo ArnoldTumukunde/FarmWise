@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchApi } from '@/lib/api';
-import { cloudinaryImageUrl } from '@/lib/utils';
+import { cloudinaryImageUrl, formatDuration } from '@/lib/utils';
 import { Star, Clock, Download as DownloadIcon } from 'lucide-react';
 import { useInView } from '@/hooks/useInView';
 import { anim } from '@/lib/animations';
@@ -185,13 +185,13 @@ export function FeaturedCourses() {
                     <span>({course.reviewCount ?? 0})</span>
                     <span className="flex items-center gap-0.5">
                       <Clock className="h-3.5 w-3.5" />
-                      {course.totalDuration ?? 0}min
+                      {formatDuration(course.totalDuration ?? 0)}
                     </span>
                   </div>
                   <p className="mt-2 text-sm font-bold text-[#1B2B1B]">
-                    {course.price === 0
+                    {Number(course.price) === 0
                       ? 'Free'
-                      : `UGX ${course.price.toLocaleString()}`}
+                      : `UGX ${Number(course.price).toLocaleString()}`}
                   </p>
                 </div>
               </Link>

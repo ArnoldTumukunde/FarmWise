@@ -36,3 +36,16 @@ export function cloudinaryImageUrl(publicId: string, width = 480, height?: numbe
 export function cloudinaryVideoUrl(publicId: string): string {
   return `https://res.cloudinary.com/${CLOUDINARY_CLOUD}/video/upload/farmwise/${publicId}`;
 }
+
+/**
+ * Format seconds to a human-readable duration: "45min", "1h 15m", "12h"
+ */
+export function formatDuration(seconds: number): string {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  if (total < 60) return `${total}s`;
+  const mins = Math.floor(total / 60);
+  if (mins < 60) return `${mins}min`;
+  const hrs = Math.floor(mins / 60);
+  const rem = mins % 60;
+  return rem === 0 ? `${hrs}h` : `${hrs}h ${rem}m`;
+}

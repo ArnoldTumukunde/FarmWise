@@ -31,7 +31,7 @@ export const getUploadSignature = async (req: AuthRequest, res: Response) => {
 
 export const handleVideoReadyWebhook = async (req: Request, res: Response) => {
   try {
-    const { public_id, asset_id, secure_url, eager } = req.body;
+    const { public_id, asset_id, secure_url, eager, duration } = req.body;
     
     // In production, we should verify the X-Cld-Signature header to ensure the webhook came from Cloudinary.
     const signature = req.headers['x-cld-signature'] as string;
@@ -58,24 +58,42 @@ export const handleVideoReadyWebhook = async (req: Request, res: Response) => {
 
     // Update the lecture that matches this videoPublicId
     const lecture = await prisma.lecture.findFirst({
-      where: { videoPublicId: public_id }
+      where: { videoPublicId: public_id },
+      include: { section: { select: { courseId: true } } },
     });
 
     if (lecture) {
-      // Find the HLS url from the eager transforms
       let hlsUrl = null;
       if (eager && eager.length > 0) {
          const m3u8Transform = eager.find((e: any) => e.format === 'm3u8');
          if (m3u8Transform) hlsUrl = m3u8Transform.secure_url;
       }
 
+      const updateData: any = {
+        videoStatus: 'READY',
+        hlsUrl: hlsUrl || storageService.getHlsUrl(public_id),
+      };
+      const dur = Number(duration);
+      if (Number.isFinite(dur) && dur > 0) {
+        updateData.duration = Math.round(dur);
+      }
+
       await prisma.lecture.update({
         where: { id: lecture.id },
-        data: {
-          videoStatus: 'READY',
-          hlsUrl: hlsUrl || storageService.getHlsUrl(public_id),
-        }
+        data: updateData,
       });
+
+      // Recompute course total duration
+      if (updateData.duration) {
+        const sum = await prisma.lecture.aggregate({
+          where: { section: { courseId: lecture.section.courseId } },
+          _sum: { duration: true },
+        });
+        await prisma.course.update({
+          where: { id: lecture.section.courseId },
+          data: { totalDuration: sum._sum.duration ?? 0 },
+        });
+      }
     }
 
     res.json({ status: 'ok' });

@@ -81,13 +81,13 @@ export function TopPickForYou() {
             {/* Price + CTA */}
             <div className="flex items-center gap-4 mt-3">
               <p className="text-xl font-bold text-text-base">
-                {course.price === 0 ? 'Free' : formatUGX(course.price)}
+                {Number(course.price) === 0 ? 'Free' : formatUGX(course.price)}
               </p>
               <button
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  if (course.price === 0) {
+                  if (Number(course.price) === 0) {
                     toast.success('Enrolled!');
                   } else {
                     cart.addItem(course.id);
@@ -96,7 +96,7 @@ export function TopPickForYou() {
                 }}
                 className="bg-primary text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-primary/90 transition-colors text-sm"
               >
-                {course.price === 0 ? 'Enroll now' : 'Add to cart'}
+                {Number(course.price) === 0 ? 'Enroll now' : 'Add to cart'}
               </button>
             </div>
           </div>

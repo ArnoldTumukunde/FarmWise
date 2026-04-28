@@ -386,7 +386,7 @@ function Navbar() {
                           {r.instructor?.profile?.displayName || 'Instructor'}
                           {r.averageRating > 0 && ` · ${r.averageRating.toFixed(1)}★`}
                           {' · '}
-                          {r.price === 0 ? 'Free' : formatUGX(r.price)}
+                          {Number(r.price) === 0 ? 'Free' : formatUGX(r.price)}
                         </p>
                       </div>
                     </button>
@@ -508,7 +508,7 @@ function Navbar() {
                                       'Instructor'}
                                   </p>
                                   <p className="text-xs font-bold text-text-base mt-0.5">
-                                    {item.course.price === 0 ? 'Free' : formatUGX(item.course.price)}
+                                    {Number(item.course.price) === 0 ? 'Free' : formatUGX(item.course.price)}
                                   </p>
                                 </div>
                                 <button

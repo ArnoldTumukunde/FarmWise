@@ -1,6 +1,17 @@
 import { prisma, Course, Section, Lecture, Prisma } from '@farmwise/db';
 import { sanitizeRichText } from '../utils/sanitize';
 
+async function recomputeCourseDuration(courseId: string) {
+  const sum = await prisma.lecture.aggregate({
+    where: { section: { courseId } },
+    _sum: { duration: true },
+  });
+  await prisma.course.update({
+    where: { id: courseId },
+    data: { totalDuration: sum._sum.duration ?? 0 },
+  });
+}
+
 export class InstructorService {
   static async listInstructorCourses(instructorId: string) {
     return prisma.course.findMany({
@@ -168,10 +179,14 @@ export class InstructorService {
     if (data.content !== undefined) updateData.content = data.content;
     if (data.quizData !== undefined) updateData.quizData = data.quizData;
 
-    return prisma.lecture.update({
+    const updated = await prisma.lecture.update({
       where: { id: lectureId },
       data: updateData,
     });
+    if (data.duration !== undefined) {
+      await recomputeCourseDuration(lecture.section.courseId);
+    }
+    return updated;
   }
 
   /**
@@ -187,6 +202,7 @@ export class InstructorService {
     }
 
     await prisma.section.delete({ where: { id: sectionId } });
+    await recomputeCourseDuration(section.courseId);
     return { success: true };
   }
 
@@ -203,6 +219,7 @@ export class InstructorService {
     }
 
     await prisma.lecture.delete({ where: { id: lectureId } });
+    await recomputeCourseDuration(lecture.section.courseId);
     return { success: true };
   }
 
