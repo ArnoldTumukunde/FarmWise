@@ -155,6 +155,7 @@ export class InstructorService {
       isPreview?: boolean;
       duration?: number;
       videoPublicId?: string;
+      videoHash?: string;
       content?: string;
       quizData?: any;
     }
@@ -172,9 +173,24 @@ export class InstructorService {
     if (data.type !== undefined) updateData.type = data.type;
     if (data.isPreview !== undefined) updateData.isPreview = data.isPreview;
     if (data.duration !== undefined) updateData.duration = data.duration;
+    if (data.videoHash !== undefined) updateData.videoHash = data.videoHash;
     if (data.videoPublicId !== undefined) {
       updateData.videoPublicId = data.videoPublicId;
-      updateData.videoStatus = 'PROCESSING'; // Will be set to READY by Cloudinary webhook
+      // Default to PROCESSING. If another lecture already has this hash + is READY,
+      // mirror its hlsUrl + status so dedup'd uploads don't reprocess.
+      let dedupReady: { hlsUrl: string | null } | null = null;
+      if (data.videoHash) {
+        dedupReady = await prisma.lecture.findFirst({
+          where: { videoHash: data.videoHash, videoStatus: 'READY', NOT: { id: lectureId } },
+          select: { hlsUrl: true },
+        });
+      }
+      if (dedupReady) {
+        updateData.videoStatus = 'READY';
+        updateData.hlsUrl = dedupReady.hlsUrl;
+      } else {
+        updateData.videoStatus = 'PROCESSING';
+      }
     }
     if (data.content !== undefined) updateData.content = data.content;
     if (data.quizData !== undefined) updateData.quizData = data.quizData;

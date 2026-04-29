@@ -181,6 +181,7 @@ model Lecture {
   order            Int
   type             LectureType
   videoPublicId    String?
+  videoHash        String?  @db.VarChar(64) // SHA-256 hex of source file for dedup
   videoStatus      VideoStatus @default(PENDING)
   hlsUrl           String?
   duration         Int?

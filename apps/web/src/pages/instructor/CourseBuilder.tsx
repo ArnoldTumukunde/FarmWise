@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchApi, API_URL } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
-import { uploadToCloudinary } from '@/lib/upload';
+import { uploadToCloudinary, hashFile } from '@/lib/upload';
 import { UploadProgressBar } from '@/components/ui/UploadProgress';
 import { formatUGX, cloudinaryImageUrl } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -468,6 +468,34 @@ const SortableLecture = ({
     setVideoAbort(abort);
 
     try {
+      // 1. Hash file to check for duplicate already on Cloudinary.
+      toast.message('Checking for duplicate...');
+      const hash = await hashFile(file, (loaded, t) => {
+        setVideoProgress({ loaded, total: t, percent: Math.round((loaded / t) * 100), etaSeconds: null, bytesPerSec: 0 });
+      });
+
+      const dup = await fetchApi('/media/check-hash', {
+        method: 'POST',
+        body: JSON.stringify({ hash }),
+      });
+
+      if (dup?.exists && dup.videoPublicId) {
+        // Reuse existing asset — no re-upload needed.
+        await fetchApi(`/instructor/courses/${courseId}/lectures/${lecture.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            videoPublicId: dup.videoPublicId,
+            videoHash: hash,
+            ...(dup.duration ? { duration: dup.duration } : {}),
+          }),
+        });
+        toast.success('Same video already on file — reused without re-uploading.');
+        onReload();
+        return;
+      }
+
+      // 2. New file — proceed with normal upload.
+      setVideoProgress({ loaded: 0, total: file.size, percent: 0, etaSeconds: null, bytesPerSec: 0 });
       const signRes = await fetchApi('/media/sign?folder=videos&type=video');
       const formData = new FormData();
       formData.append('file', file);
@@ -492,7 +520,7 @@ const SortableLecture = ({
       const duration = Math.round(uploadData.duration || 0);
       await fetchApi(`/instructor/courses/${courseId}/lectures/${lecture.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ videoPublicId: publicId, duration }),
+        body: JSON.stringify({ videoPublicId: publicId, duration, videoHash: hash }),
       });
       toast.success('Video uploaded! HLS transcoding will complete shortly.');
       onReload();

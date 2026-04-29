@@ -29,7 +29,7 @@ export class CloudinaryStorageService implements StorageService {
       cloudinary.uploader.upload_stream({ 
         folder: `farmwise/${folder}`, 
         resource_type: 'video',
-        eager: 'sp_hd/m3u8',
+        eager: 'sp_full_hd/m3u8',
         eager_async: true
       }, (error, result) => {
         if (error || !result) return reject(error);
@@ -73,13 +73,13 @@ export class CloudinaryStorageService implements StorageService {
       folder: `farmwise/${folder}`,
     };
 
-    // Video uploads: generate HLS (sp_hd/m3u8) asynchronously after upload
+    // Video uploads: generate HLS (sp_full_hd/m3u8) asynchronously after upload
     // - eager_async=true queues the transform (doesn't block upload)
     // - async=true makes the entire upload processing async (needed for >100MB)
     // Cloudinary webhook `handleVideoReadyWebhook` fires when HLS ready
     // and populates lecture.hlsUrl + videoStatus='READY'.
     if (resourceType === 'video') {
-      paramsToSign.eager = 'sp_hd/m3u8';
+      paramsToSign.eager = 'sp_full_hd/m3u8';
       paramsToSign.eager_async = true;
     }
 

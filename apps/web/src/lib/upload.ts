@@ -225,3 +225,34 @@ export function formatEta(seconds: number | null): string {
   const s = seconds % 60;
   return `${m}m ${s}s`;
 }
+
+/**
+ * SHA-256 hex digest of a File. Used for upload deduplication.
+ * Reads whole file into memory — acceptable up to ~500MB. For larger,
+ * use a streaming hasher (out of scope here).
+ */
+export async function hashFile(file: File, onProgress?: (loaded: number, total: number) => void): Promise<string> {
+  // Stream-read in chunks so we can report progress while hashing big files.
+  const chunkSize = 8 * 1024 * 1024; // 8MB
+  const total = file.size;
+  let loaded = 0;
+  const chunks: ArrayBuffer[] = [];
+  for (let start = 0; start < total; start += chunkSize) {
+    const end = Math.min(start + chunkSize, total);
+    const buf = await file.slice(start, end).arrayBuffer();
+    chunks.push(buf);
+    loaded += buf.byteLength;
+    onProgress?.(loaded, total);
+  }
+  // Concatenate (one-time copy) then digest.
+  const combined = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    combined.set(new Uint8Array(c), offset);
+    offset += c.byteLength;
+  }
+  const digest = await crypto.subtle.digest('SHA-256', combined);
+  return Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
