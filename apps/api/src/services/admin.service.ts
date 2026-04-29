@@ -63,13 +63,15 @@ export class AdminService {
     // --- USERS & INSTRUCTORS ---
     static async listUsers(page = 1, limit = 20) {
         const skip = (page - 1) * limit;
+        const where = { deletedAt: null };
         const [users, total] = await Promise.all([
             prisma.user.findMany({
+                where,
                 skip, take: limit,
                 include: { profile: true },
                 orderBy: { createdAt: 'desc' }
             }),
-            prisma.user.count()
+            prisma.user.count({ where })
         ]);
         return { users, total, page, totalPages: Math.ceil(total / limit) };
     }
@@ -128,7 +130,39 @@ export class AdminService {
             throw new Error('Cannot delete user: they have active enrollments as an instructor');
         }
 
-        return prisma.user.delete({ where: { id: userId } });
+        // Soft delete: set deletedAt + anonymize PII so the email/phone can be
+        // reused for a new account. We do NOT hard-delete because foreign keys
+        // (Profile, Enrollment, Review, payment records, audit logs, etc.) need
+        // to remain intact for refunds, payouts, instructor history, compliance.
+        return prisma.$transaction(async (tx) => {
+            await tx.user.update({
+                where: { id: userId },
+                data: {
+                    email: null,
+                    phone: null,
+                    passwordHash: null,
+                    isVerified: false,
+                    verifyToken: null,
+                    verifyTokenExp: null,
+                    resetToken: null,
+                    resetTokenExp: null,
+                    deletedAt: new Date(),
+                },
+            });
+            await tx.profile.updateMany({
+                where: { userId },
+                data: {
+                    displayName: 'Deleted user',
+                    username: null,
+                    headline: null,
+                    bio: null,
+                    avatarPublicId: null,
+                    farmLocation: null,
+                    website: null,
+                },
+            });
+            return { success: true };
+        });
     }
 
     // --- COURSES ---

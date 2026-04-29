@@ -20,7 +20,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
     const payload = jwt.verify(token, JWT_SECRET) as { userId: string, role: Role };
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
 
-    if (!user) {
+    if (!user || user.deletedAt) {
       return res.status(401).json({ error: 'User no longer exists' });
     }
 
