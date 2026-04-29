@@ -153,17 +153,22 @@ export function CoursePlayer() {
 
     const enrollmentId = data.enrollmentId;
     const lectureId = activeLectureId;
+    const lectureDuration = data?.course?.sections
+      ?.flatMap((s: any) => s.lectures || [])
+      ?.find((l: any) => l.id === lectureId)?.duration || 0;
 
     progressIntervalRef.current = setInterval(() => {
       if (watchedSecondsRef.current > 0) {
-        syncProgressToServer(lectureId, enrollmentId, false);
+        // Auto-complete at 90% watched (sticky on backend so safe to send true)
+        const reachedThreshold = lectureDuration > 0 && watchedSecondsRef.current >= lectureDuration * 0.9;
+        syncProgressToServer(lectureId, enrollmentId, reachedThreshold);
       }
     }, 30_000);
 
     return () => {
-      // Save progress on lecture change / unmount
       if (watchedSecondsRef.current > 0) {
-        syncProgressToServer(lectureId, enrollmentId, false);
+        const reachedThreshold = lectureDuration > 0 && watchedSecondsRef.current >= lectureDuration * 0.9;
+        syncProgressToServer(lectureId, enrollmentId, reachedThreshold);
       }
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);

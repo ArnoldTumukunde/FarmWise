@@ -76,25 +76,42 @@ export class ProgressService {
      * Sync progress from the offline db
      */
     static async syncProgress(userId: string, records: any[]) {
-        await prisma.$transaction(
-            records.map((record) =>
-                prisma.lectureProgress.upsert({
-                    where: { userId_lectureId: { userId, lectureId: record.lectureId } },
-                    update: {
-                        isCompleted: record.isCompleted,
-                        watchedSeconds: Math.max(0, Number(record.watchedSeconds) || 0),
-                        syncedAt: new Date()
-                    },
-                    create: {
-                        userId,
-                        lectureId: record.lectureId,
-                        enrollmentId: record.enrollmentId,
-                        isCompleted: record.isCompleted,
-                        watchedSeconds: Math.max(0, Number(record.watchedSeconds) || 0),
-                        syncedAt: new Date()
-                    }
-                })
-            )
-        );
+        // Sticky completion: never demote isCompleted=true → false.
+        // Sticky watchedSeconds: max of existing + incoming so rewind/scrub doesn't regress.
+        // Stamp completedAt on first transition to complete.
+        for (const record of records) {
+            const watched = Math.max(0, Number(record.watchedSeconds) || 0);
+            const incomingComplete = !!record.isCompleted;
+
+            const existing = await prisma.lectureProgress.findUnique({
+                where: { userId_lectureId: { userId, lectureId: record.lectureId } },
+                select: { isCompleted: true, watchedSeconds: true, completedAt: true },
+            });
+
+            const isCompleted = (existing?.isCompleted || incomingComplete);
+            const newWatched = Math.max(existing?.watchedSeconds ?? 0, watched);
+            const completedAt = isCompleted ? (existing?.completedAt ?? new Date()) : null;
+
+            await prisma.lectureProgress.upsert({
+                where: { userId_lectureId: { userId, lectureId: record.lectureId } },
+                update: {
+                    isCompleted,
+                    watchedSeconds: newWatched,
+                    lastWatchedAt: new Date(),
+                    syncedAt: new Date(),
+                    ...(completedAt ? { completedAt } : {}),
+                },
+                create: {
+                    userId,
+                    lectureId: record.lectureId,
+                    enrollmentId: record.enrollmentId,
+                    isCompleted,
+                    watchedSeconds: newWatched,
+                    lastWatchedAt: new Date(),
+                    syncedAt: new Date(),
+                    ...(completedAt ? { completedAt } : {}),
+                },
+            });
+        }
     }
 }
