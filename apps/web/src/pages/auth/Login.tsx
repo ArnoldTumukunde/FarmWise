@@ -30,7 +30,8 @@ function getRedirectForRole(role: string | undefined, requestedRedirect: string)
 
 export default function Login() {
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get('redirect') || '/my-learning';
+  // Accept both `next` (current convention) and `redirect` (legacy) query params.
+  const redirectTo = searchParams.get('next') || searchParams.get('redirect') || '/my-learning';
   const { setAuth } = useAuthStore();
   const navigate = useNavigate();
 

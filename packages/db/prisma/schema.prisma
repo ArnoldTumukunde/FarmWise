@@ -307,6 +307,8 @@ model Enrollment {
   course           Course           @relation(fields: [courseId], references: [id])
   paidAmount       Decimal          @default(0) @db.Decimal(14, 2)
   currency         String           @default("UGX")
+  isArchived       Boolean          @default(false) // user-side hide; pauses progress sync
+  archivedAt       DateTime?
   // Snapshot of effective instructor share at purchase time. NEVER recompute from
   // Course.instructorSharePercent at payout — admins changing the split must not
   // retroactively shift recorded earnings.

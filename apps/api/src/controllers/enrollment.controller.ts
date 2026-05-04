@@ -19,10 +19,29 @@ export const enrollFree = async (req: AuthRequest, res: Response) => {
 
 export const getMyEnrollments = async (req: AuthRequest, res: Response) => {
   try {
-    const enrollments = await EnrollmentService.getUserEnrollments(req.user!.id);
+    const archived = req.query.archived === 'true';
+    const enrollments = await EnrollmentService.getUserEnrollments(req.user!.id, { archived });
     res.json({ enrollments });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+export const archiveEnrollment = async (req: AuthRequest, res: Response) => {
+  try {
+    const enrollment = await EnrollmentService.setArchived(req.user!.id, req.params.id, true);
+    res.json({ success: true, enrollment });
+  } catch (error: any) {
+    res.status(404).json({ error: error.message });
+  }
+};
+
+export const unarchiveEnrollment = async (req: AuthRequest, res: Response) => {
+  try {
+    const enrollment = await EnrollmentService.setArchived(req.user!.id, req.params.id, false);
+    res.json({ success: true, enrollment });
+  } catch (error: any) {
+    res.status(404).json({ error: error.message });
   }
 };
 

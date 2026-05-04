@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { cloudinaryImageUrl } from '@/lib/utils';
 import { StarRating } from '@/components/ui/StarRating';
 import {
-  MoreHorizontal, Play, ExternalLink, Download, Archive, Share2, Star,
+  MoreHorizontal, Play, ExternalLink, Download, Archive, ArchiveRestore, Share2, Star,
   Sprout, Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -19,6 +19,7 @@ export interface EnrolledCourse {
   userRating?: number;
   lastLectureId?: string;
   lastAccessedAt?: string;
+  isArchived?: boolean;
 }
 
 interface EnrolledCourseGridProps {
@@ -26,9 +27,11 @@ interface EnrolledCourseGridProps {
   viewMode: 'grid' | 'list';
   onClearFilters: () => void;
   hasEnrollments: boolean;
+  onArchive?: (enrollmentId: string) => void;
+  onUnarchive?: (enrollmentId: string) => void;
 }
 
-export function EnrolledCourseGrid({ courses, viewMode, onClearFilters, hasEnrollments }: EnrolledCourseGridProps) {
+export function EnrolledCourseGrid({ courses, viewMode, onClearFilters, hasEnrollments, onArchive, onUnarchive }: EnrolledCourseGridProps) {
   if (!hasEnrollments) {
     return (
       <div className="text-center py-16 px-4">
@@ -71,7 +74,12 @@ export function EnrolledCourseGrid({ courses, viewMode, onClearFilters, hasEnrol
       <div className="px-4 md:px-6 lg:px-10 pb-8">
         <div className="divide-y divide-gray-100">
           {courses.map(course => (
-            <EnrolledCourseListItem key={course.enrollmentId} course={course} />
+            <EnrolledCourseListItem
+              key={course.enrollmentId}
+              course={course}
+              onArchive={onArchive}
+              onUnarchive={onUnarchive}
+            />
           ))}
         </div>
       </div>
@@ -81,14 +89,27 @@ export function EnrolledCourseGrid({ courses, viewMode, onClearFilters, hasEnrol
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 px-4 md:px-6 lg:px-10 pb-8">
       {courses.map(course => (
-        <EnrolledCourseGridCard key={course.enrollmentId} course={course} />
+        <EnrolledCourseGridCard
+          key={course.enrollmentId}
+          course={course}
+          onArchive={onArchive}
+          onUnarchive={onUnarchive}
+        />
       ))}
     </div>
   );
 }
 
 /* ───── Grid Card ───── */
-function EnrolledCourseGridCard({ course }: { course: EnrolledCourse }) {
+function EnrolledCourseGridCard({
+  course,
+  onArchive,
+  onUnarchive,
+}: {
+  course: EnrolledCourse;
+  onArchive?: (enrollmentId: string) => void;
+  onUnarchive?: (enrollmentId: string) => void;
+}) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -133,7 +154,19 @@ function EnrolledCourseGridCard({ course }: { course: EnrolledCourse }) {
               <MenuOption icon={<Play size={14} />} label="Continue course" onClick={() => navigate(learnPath)} />
               <MenuOption icon={<ExternalLink size={14} />} label="Course details" onClick={() => navigate(`/course/${course.slug}`)} />
               <MenuOption icon={<Download size={14} />} label="Download all lectures" onClick={() => toast.info('Download queued')} />
-              <MenuOption icon={<Archive size={14} />} label="Archive" onClick={() => toast.info('Course archived')} />
+              {course.isArchived ? (
+                <MenuOption
+                  icon={<ArchiveRestore size={14} />}
+                  label="Unarchive"
+                  onClick={() => { setMenuOpen(false); onUnarchive?.(course.enrollmentId); }}
+                />
+              ) : (
+                <MenuOption
+                  icon={<Archive size={14} />}
+                  label="Archive"
+                  onClick={() => { setMenuOpen(false); onArchive?.(course.enrollmentId); }}
+                />
+              )}
               <MenuOption icon={<Share2 size={14} />} label="Share" onClick={() => {
                 navigator.clipboard.writeText(`${window.location.origin}/course/${course.slug}`);
                 toast.success('Link copied!');
@@ -194,7 +227,15 @@ function EnrolledCourseGridCard({ course }: { course: EnrolledCourse }) {
 }
 
 /* ───── List Item ───── */
-function EnrolledCourseListItem({ course }: { course: EnrolledCourse }) {
+function EnrolledCourseListItem({
+  course,
+  onArchive,
+  onUnarchive,
+}: {
+  course: EnrolledCourse;
+  onArchive?: (enrollmentId: string) => void;
+  onUnarchive?: (enrollmentId: string) => void;
+}) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -261,7 +302,19 @@ function EnrolledCourseListItem({ course }: { course: EnrolledCourse }) {
           <div className="absolute top-8 right-0 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-52 z-20">
             <MenuOption icon={<Play size={14} />} label="Continue course" onClick={() => navigate(learnPath)} />
             <MenuOption icon={<ExternalLink size={14} />} label="Course details" onClick={() => navigate(`/course/${course.slug}`)} />
-            <MenuOption icon={<Archive size={14} />} label="Archive" onClick={() => toast.info('Course archived')} />
+            {course.isArchived ? (
+              <MenuOption
+                icon={<ArchiveRestore size={14} />}
+                label="Unarchive"
+                onClick={() => { setMenuOpen(false); onUnarchive?.(course.enrollmentId); }}
+              />
+            ) : (
+              <MenuOption
+                icon={<Archive size={14} />}
+                label="Archive"
+                onClick={() => { setMenuOpen(false); onArchive?.(course.enrollmentId); }}
+              />
+            )}
             <MenuOption icon={<Share2 size={14} />} label="Share" onClick={() => {
               navigator.clipboard.writeText(`${window.location.origin}/course/${course.slug}`);
               toast.success('Link copied!');

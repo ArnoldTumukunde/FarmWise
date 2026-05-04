@@ -52,9 +52,9 @@ export class EnrollmentService {
     return enrollment?.status === 'ACTIVE';
   }
 
-  static async getUserEnrollments(userId: string) {
+  static async getUserEnrollments(userId: string, opts: { archived?: boolean } = {}) {
     const enrollments = await prisma.enrollment.findMany({
-      where: { userId, status: 'ACTIVE' },
+      where: { userId, status: 'ACTIVE', isArchived: opts.archived ?? false },
       include: {
         course: {
           select: {
@@ -82,6 +82,24 @@ export class EnrollmentService {
       const progressPercent = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0;
       const { sections, ...courseWithoutSections } = enrollment.course;
       return { ...enrollment, course: courseWithoutSections, progressPercent };
+    });
+  }
+
+  /** Toggle archive flag. Owner-only. Accepts enrollment id OR courseId. */
+  static async setArchived(userId: string, enrollmentOrCourseId: string, archived: boolean) {
+    const enrollment = await prisma.enrollment.findFirst({
+      where: {
+        userId,
+        OR: [{ id: enrollmentOrCourseId }, { courseId: enrollmentOrCourseId }],
+      },
+    });
+    if (!enrollment) throw new Error('Enrollment not found');
+    return prisma.enrollment.update({
+      where: { id: enrollment.id },
+      data: {
+        isArchived: archived,
+        archivedAt: archived ? new Date() : null,
+      },
     });
   }
 

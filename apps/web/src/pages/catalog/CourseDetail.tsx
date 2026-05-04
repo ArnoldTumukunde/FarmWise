@@ -162,7 +162,8 @@ export default function CourseDetail() {
 
   const handleEnroll = async () => {
     if (!token) {
-      navigate("/login");
+      toast.error('You must be signed in to purchase a course');
+      navigate(`/login?next=${encodeURIComponent(`/course/${slug}`)}`);
       return;
     }
     if (!course) return;
@@ -256,7 +257,8 @@ export default function CourseDetail() {
 
   const handleBuyNow = async () => {
     if (!token) {
-      navigate('/login');
+      toast.error('You must be signed in to purchase a course');
+      navigate(`/login?next=${encodeURIComponent(`/course/${slug}`)}`);
       return;
     }
     if (!course) return;

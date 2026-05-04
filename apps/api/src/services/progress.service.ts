@@ -100,10 +100,23 @@ export class ProgressService {
      * Sync progress from the offline db
      */
     static async syncProgress(userId: string, records: any[]) {
+        // Skip records targeting archived enrollments — user explicitly paused
+        // tracking on those courses. Look up once per batch and cache.
+        const enrollmentIds = Array.from(
+            new Set(records.map((r) => r.enrollmentId).filter(Boolean) as string[]),
+        );
+        const archivedIds = new Set(
+            (await prisma.enrollment.findMany({
+                where: { userId, id: { in: enrollmentIds }, isArchived: true },
+                select: { id: true },
+            })).map((e) => e.id),
+        );
+
         // Sticky completion: never demote isCompleted=true → false.
         // Sticky watchedSeconds: max of existing + incoming so rewind/scrub doesn't regress.
         // Stamp completedAt on first transition to complete.
         for (const record of records) {
+            if (record.enrollmentId && archivedIds.has(record.enrollmentId)) continue;
             const watched = Math.max(0, Number(record.watchedSeconds) || 0);
             const incomingComplete = !!record.isCompleted;
 

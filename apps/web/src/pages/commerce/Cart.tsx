@@ -31,7 +31,10 @@ export default function Cart() {
   }, [token]);
 
   useEffect(() => {
-    if (!token) navigate('/login?redirect=/cart');
+    if (!token) {
+      toast.error('You must be signed in to view your cart');
+      navigate('/login?next=/cart');
+    }
   }, [token]);
 
   const subtotal = cart.items.reduce((s, i) => s + (i.course.price || 0), 0);

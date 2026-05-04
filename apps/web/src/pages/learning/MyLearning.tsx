@@ -19,6 +19,7 @@ interface RawEnrollment {
   progressPercent: number;
   lastAccessedAt?: string;
   createdAt: string;
+  isArchived?: boolean;
   course: {
     id: string;
     slug: string;
@@ -58,9 +59,20 @@ export default function MyLearning() {
   const [recCourses, setRecCourses] = useState<any[]>([]);
   const [recTitle, setRecTitle] = useState('');
 
+  const loadEnrollments = async () => {
+    const archived = activeTab === 'archived';
+    try {
+      const res = await fetchApi(`/enrollments${archived ? '?archived=true' : ''}`);
+      setEnrollments(res.enrollments || []);
+    } catch {
+      toast.error('Failed to load your courses');
+    }
+  };
+
   useEffect(() => {
+    setLoading(true);
     Promise.all([
-      fetchApi('/enrollments'),
+      fetchApi(`/enrollments${activeTab === 'archived' ? '?archived=true' : ''}`),
       fetchApi('/courses/categories'),
     ])
       .then(([enrollRes, catRes]) => {
@@ -69,7 +81,28 @@ export default function MyLearning() {
       })
       .catch(() => toast.error('Failed to load your courses'))
       .finally(() => setLoading(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const handleArchive = async (enrollmentId: string) => {
+    try {
+      await fetchApi(`/enrollments/${enrollmentId}/archive`, { method: 'POST' });
+      toast.success('Course archived');
+      await loadEnrollments();
+    } catch (err: any) {
+      toast.error(err.message || 'Could not archive course');
+    }
+  };
+
+  const handleUnarchive = async (enrollmentId: string) => {
+    try {
+      await fetchApi(`/enrollments/${enrollmentId}/unarchive`, { method: 'POST' });
+      toast.success('Course unarchived');
+      await loadEnrollments();
+    } catch (err: any) {
+      toast.error(err.message || 'Could not unarchive course');
+    }
+  };
 
   // Load recommendations
   useEffect(() => {
@@ -122,6 +155,7 @@ export default function MyLearning() {
       instructor: { name: e.course.instructor?.profile?.displayName || 'Instructor' },
       completionPercent: e.progressPercent || 0,
       lastAccessedAt: e.lastAccessedAt,
+      isArchived: e.isArchived,
     }));
   }, [enrollments]);
 
@@ -247,6 +281,8 @@ export default function MyLearning() {
             viewMode={viewMode}
             onClearFilters={clearAllFilters}
             hasEnrollments={enrollments.length > 0}
+            onArchive={handleArchive}
+            onUnarchive={handleUnarchive}
           />
 
           {activeTab === 'all' && recCourses.length > 0 && (
