@@ -62,11 +62,21 @@ export class CloudinaryStorageService implements StorageService {
     });
   }
 
+  getSignedRawUrl(publicId: string, expiresInSeconds: number = 300): string {
+    return cloudinary.url(publicId, {
+      resource_type: 'raw',
+      sign_url: true,
+      type: 'authenticated',
+      expires_at: Math.floor(Date.now() / 1000) + expiresInSeconds,
+      secure: true,
+    });
+  }
+
   async deleteAsset(publicId: string): Promise<void> {
     await cloudinary.uploader.destroy(publicId);
   }
 
-  generateUploadSignature(folder: string, resourceType: 'image' | 'video' = 'image') {
+  generateUploadSignature(folder: string, resourceType: 'image' | 'video' | 'raw' = 'image') {
     const timestamp = Math.round(Date.now() / 1000);
     const paramsToSign: Record<string, any> = {
       timestamp,
@@ -81,6 +91,13 @@ export class CloudinaryStorageService implements StorageService {
     if (resourceType === 'video') {
       paramsToSign.eager = 'sp_full_hd/m3u8';
       paramsToSign.eager_async = true;
+    }
+
+    // PDFs uploaded as authenticated raw — viewing requires signed URL.
+    // type=authenticated must be part of the signed params or Cloudinary
+    // rejects the upload.
+    if (resourceType === 'raw') {
+      paramsToSign.type = 'authenticated';
     }
 
     // Fallback secret parsing for missing CLOUDINARY_API_SECRET if CLOUDINARY_URL format used
@@ -103,6 +120,7 @@ export class CloudinaryStorageService implements StorageService {
       folder: paramsToSign.folder,
       eager: paramsToSign.eager,
       eager_async: paramsToSign.eager_async,
+      type: paramsToSign.type,
       api_key: apiKey,
       resourceType,
     };

@@ -197,6 +197,8 @@ model Lecture {
   isPreview        Boolean     @default(false)
   content          String?     @db.Text     // Article body (Markdown)
   quizData         Json?                    // Quiz questions array [{question, options[], correctIndex}]
+  pdfPublicId      String?                  // Cloudinary public_id (resource_type=raw) for PDF lectures
+  pdfPageCount     Int?                     // Probed at upload time; used for progress tracking
   resources        Resource[]
   progress         LectureProgress[]
   downloads        OfflineDownload[]
@@ -209,6 +211,7 @@ enum LectureType {
   VIDEO
   ARTICLE
   QUIZ
+  PDF
 }
 
 enum VideoStatus {

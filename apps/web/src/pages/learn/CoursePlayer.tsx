@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   PlayCircle,
   FileText,
+  FileType2,
   HelpCircle,
   CheckCircle2,
   Download,
@@ -19,6 +20,7 @@ import { DownloadButton } from '../../components/video/DownloadButton';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { QASection } from '../../components/learn/QASection';
 import { NotesSection } from '../../components/learn/NotesSection';
+import { PdfViewerModal } from '../../components/learn/PdfViewerModal';
 import { CertificateButton } from '../../components/learn/PdfCertificate';
 import { ReviewModal } from '../../components/learn/ReviewModal';
 import { toast } from 'sonner';
@@ -38,6 +40,8 @@ function LectureTypeIcon({ type, className }: { type: string; className?: string
       return <FileText size={16} className={className} />;
     case 'QUIZ':
       return <HelpCircle size={16} className={className} />;
+    case 'PDF':
+      return <FileType2 size={16} className={className} />;
     default:
       return <PlayCircle size={16} className={className} />;
   }
@@ -101,6 +105,7 @@ export function CoursePlayer() {
   const [error, setError] = useState<string | null>(null);
   const watchedSecondsRef = useRef(0);
   const [courseDownload, setCourseDownload] = useState<{ downloading: boolean; completed: number; total: number } | null>(null);
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
 
   const handleDownloadCourse = useCallback(async () => {
     if (!data?.course?.sections) return;
@@ -359,6 +364,29 @@ export function CoursePlayer() {
                 }}
                 isCompleted={completedLectures.has(activeLecture.id)}
               />
+            ) : activeLecture.type === 'PDF' ? (
+              <div className="max-w-3xl mx-auto px-6 py-12 w-full">
+                <div className="bg-white border border-[#2E7D32]/10 rounded-xl p-8 text-center shadow-sm">
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-rose-50 text-rose-600 mb-4">
+                    <FileType2 size={28} />
+                  </div>
+                  <h2 className="text-xl font-semibold text-[#1B2B1B]">{activeLecture.title}</h2>
+                  <p className="text-sm text-[#5A6E5A] mt-2">
+                    {activeLecture.pdfPageCount
+                      ? `${activeLecture.pdfPageCount}-page document`
+                      : 'PDF document'}{' '}
+                    — open the reader to view in your browser.
+                  </p>
+                  <button
+                    onClick={() => setPdfModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 mt-6 bg-[#2E7D32] text-white font-medium rounded-lg hover:bg-[#2E7D32]/90 transition-colors text-sm focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2"
+                  >
+                    <FileType2 size={16} />
+                    Open PDF
+                  </button>
+                  <p className="text-xs text-[#5A6E5A] mt-3">Read-only — downloading is disabled.</p>
+                </div>
+              </div>
             ) : (
               <div className="w-full bg-[#1A2E1A] aspect-video flex items-center justify-center text-white/60">
                 <p className="text-sm">Unsupported lecture type</p>
@@ -468,6 +496,34 @@ export function CoursePlayer() {
 
             {isReviewOpen && (
               <ReviewModal courseId={courseId!} onClose={() => setIsReviewOpen(false)} />
+            )}
+
+            {activeLecture && activeLecture.type === 'PDF' && (
+              <PdfViewerModal
+                lectureId={activeLecture.id}
+                title={activeLecture.title}
+                open={pdfModalOpen}
+                onClose={() => setPdfModalOpen(false)}
+                onLastPageReached={async () => {
+                  if (!data?.enrollmentId) return;
+                  if (completedLectures.has(activeLecture.id)) return;
+                  try {
+                    await syncProgressToServer(activeLecture.id, data.enrollmentId, true);
+                    setData((prev: any) => {
+                      if (!prev) return prev;
+                      const ids = new Set(prev.progress?.completedLectureIds || []);
+                      ids.add(activeLecture.id);
+                      return {
+                        ...prev,
+                        progress: { ...prev.progress, completedLectureIds: Array.from(ids) },
+                      };
+                    });
+                    toast.success('PDF completed!');
+                  } catch (e) {
+                    console.error('Failed to mark PDF completed', e);
+                  }
+                }}
+              />
             )}
           </div>
         </main>
@@ -616,13 +672,7 @@ export function CoursePlayer() {
                                 {lecture.title}
                               </span>
                               <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-[#5A6E5A]">
-                                  {lecture.type === 'VIDEO'
-                                    ? 'VIDEO'
-                                    : lecture.type === 'ARTICLE'
-                                    ? 'ARTICLE'
-                                    : 'QUIZ'}
-                                </span>
+                                <span className="text-xs text-[#5A6E5A]">{lecture.type}</span>
                                 {lecture.duration > 0 && (
                                   <>
                                     <span className="text-xs text-[#5A6E5A]">·</span>

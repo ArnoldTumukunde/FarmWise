@@ -32,6 +32,7 @@ import {
   Plus,
   PlayCircle,
   FileText,
+  FileType2,
   HelpCircle,
   Eye,
   Send,
@@ -61,6 +62,8 @@ interface Lecture {
   duration?: number;
   content?: string;
   quizData?: { question: string; options: string[]; correctIndex: number }[];
+  pdfPublicId?: string | null;
+  pdfPageCount?: number | null;
 }
 
 interface Section {
@@ -102,7 +105,10 @@ const TYPE_STYLES: Record<string, { bg: string; text: string; icon: typeof PlayC
   VIDEO: { bg: 'bg-blue-100', text: 'text-blue-700', icon: PlayCircle },
   ARTICLE: { bg: 'bg-amber-100', text: 'text-amber-700', icon: FileText },
   QUIZ: { bg: 'bg-purple-100', text: 'text-purple-700', icon: HelpCircle },
+  PDF: { bg: 'bg-rose-100', text: 'text-rose-700', icon: FileType2 },
 };
+
+type LectureKind = LectureKind | 'PDF';
 
 const CLOUD_NAME = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
 
@@ -417,6 +423,10 @@ const SortableLecture = ({
   const [videoFileName, setVideoFileName] = useState('');
   const [updatingField, setUpdatingField] = useState(false);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState<import('@/lib/upload').UploadProgress | null>(null);
+  const [pdfFileName, setPdfFileName] = useState('');
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const handleRename = async (newTitle: string) => {
     onRenameOptimistic(lecture.id, newTitle);
@@ -539,6 +549,72 @@ const SortableLecture = ({
 
   const cancelVideoUpload = () => videoAbort?.abort();
 
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      toast.error('Please select a PDF file');
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('PDF must be 50 MB or smaller');
+      return;
+    }
+
+    setUploadingPdf(true);
+    setPdfFileName(file.name);
+    setPdfProgress({ loaded: 0, total: file.size, percent: 0, etaSeconds: null, bytesPerSec: 0 });
+
+    try {
+      // Probe page count locally before upload (so the publish step has the value).
+      let pageCount: number | null = null;
+      try {
+        const { getDocument, GlobalWorkerOptions } = await import('pdfjs-dist');
+        const workerSrc = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+        GlobalWorkerOptions.workerSrc = workerSrc;
+        const buf = await file.arrayBuffer();
+        const doc = await getDocument({ data: buf }).promise;
+        pageCount = doc.numPages;
+      } catch {
+        // page count is best-effort — continue without it
+      }
+
+      const signRes = await fetchApi('/media/sign?folder=pdfs&type=raw');
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', signRes.apiKey);
+      formData.append('timestamp', String(signRes.timestamp));
+      formData.append('signature', signRes.signature);
+      formData.append('folder', signRes.folder);
+      if (signRes.type) formData.append('type', signRes.type);
+
+      const cloudName = signRes.cloudName || CLOUD_NAME;
+      const uploadData = await uploadToCloudinary({
+        cloudName,
+        resourceType: 'raw',
+        formData,
+        onProgress: setPdfProgress,
+      });
+
+      await fetchApi(`/instructor/courses/${courseId}/lectures/${lecture.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          pdfPublicId: uploadData.public_id,
+          pdfPageCount: pageCount,
+        }),
+      });
+      toast.success('PDF uploaded.');
+      onReload();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to upload PDF');
+    } finally {
+      setUploadingPdf(false);
+      setPdfProgress(null);
+      setPdfFileName('');
+      if (pdfInputRef.current) pdfInputRef.current.value = '';
+    }
+  };
+
   const handleTogglePreview = async () => {
     setUpdatingField(true);
     try {
@@ -576,6 +652,14 @@ const SortableLecture = ({
         accept="video/*"
         className="hidden"
         onChange={handleVideoUpload}
+      />
+      {/* Hidden PDF file input */}
+      <input
+        ref={pdfInputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={handlePdfUpload}
       />
 
       {/* Main row */}
@@ -719,6 +803,49 @@ const SortableLecture = ({
             />
           )}
 
+          {/* PDF upload (for PDF type) */}
+          {lecture.type === 'PDF' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-[#5A6E5A]">PDF document</span>
+                {lecture.pdfPageCount ? (
+                  <span className="text-xs text-[#5A6E5A]">{lecture.pdfPageCount} pages</span>
+                ) : null}
+              </div>
+              {uploadingPdf && pdfProgress ? (
+                <UploadProgressBar progress={pdfProgress} label={`Uploading ${pdfFileName}`} />
+              ) : lecture.pdfPublicId ? (
+                <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
+                  <FileType2 size={20} className="text-rose-600 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-[#1B2B1B] truncate">
+                      {lecture.pdfPublicId.split('/').pop()}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => pdfInputRef.current?.click()}
+                    disabled={uploadingPdf}
+                    className="text-xs shrink-0"
+                  >
+                    Replace
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => pdfInputRef.current?.click()}
+                  disabled={uploadingPdf}
+                  className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[#2E7D32]/50 transition-colors cursor-pointer"
+                >
+                  <Upload size={20} className="mx-auto mb-1 text-gray-400" />
+                  <p className="text-sm text-[#5A6E5A]">Click to upload a PDF</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Up to 50 MB. Viewable in-browser, not downloadable.</p>
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Duration display */}
           {lecture.duration ? (
             <div className="flex items-center justify-between">
@@ -751,14 +878,14 @@ const SectionBuilder = ({
   section: Section;
   index: number;
   courseId: string;
-  onAddLecture: (sectionId: string, title: string, type: 'VIDEO' | 'ARTICLE' | 'QUIZ') => void;
+  onAddLecture: (sectionId: string, title: string, type: LectureKind) => void;
   onReload: () => void;
   onSectionRename: (sectionId: string, title: string) => void;
   onSectionDelete: (sectionId: string, title: string) => void;
   onLectureRename: (lectureId: string, title: string) => void;
 }) => {
   const [newLectureTitle, setNewLectureTitle] = useState('');
-  const [newLectureType, setNewLectureType] = useState<'VIDEO' | 'ARTICLE' | 'QUIZ'>('VIDEO');
+  const [newLectureType, setNewLectureType] = useState<LectureKind>('VIDEO');
 
   return (
     <Card className="bg-white border-gray-200 shadow-sm">
@@ -820,12 +947,13 @@ const SectionBuilder = ({
           />
           <select
             value={newLectureType}
-            onChange={e => setNewLectureType(e.target.value as 'VIDEO' | 'ARTICLE' | 'QUIZ')}
+            onChange={e => setNewLectureType(e.target.value as LectureKind)}
             className="border border-gray-200 rounded-md px-3 bg-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D32] focus-visible:ring-offset-2"
           >
             <option value="VIDEO">Video</option>
             <option value="ARTICLE">Article</option>
             <option value="QUIZ">Quiz</option>
+            <option value="PDF">PDF</option>
           </select>
           <Button
             variant="secondary"
@@ -1087,7 +1215,7 @@ export default function CourseBuilder() {
   const handleAddLecture = async (
     sectionId: string,
     lectureTitle: string,
-    type: 'VIDEO' | 'ARTICLE' | 'QUIZ'
+    type: LectureKind
   ) => {
     try {
       await fetchApi(`/instructor/sections/${sectionId}/lectures`, {

@@ -124,7 +124,9 @@ export class EnrollmentService {
                 isPreview: true,
                 content: true,
                 quizData: true,
-                // videoPublicId is intentionally EXCLUDED — never expose to client
+                pdfPageCount: true,
+                // videoPublicId + pdfPublicId are intentionally EXCLUDED —
+                // signed URLs only, fetched on demand from /learn/lectures/:id/{download,pdf}-url
               },
             },
           },

@@ -43,6 +43,30 @@ export class ProgressService {
     }
 
     /**
+     * Signed short-lived URL for in-browser PDF viewing. Mirrors video gating:
+     * enrolled OR preview lecture. URL expires in 5 minutes.
+     */
+    static async getPdfUrl(userId: string, lectureId: string) {
+        const lecture = await prisma.lecture.findUnique({
+            where: { id: lectureId },
+            include: { section: true },
+        });
+        if (!lecture) throw new Error('Lecture not found');
+
+        const enrollment = await prisma.enrollment.findFirst({
+            where: { userId, courseId: lecture.section.courseId, status: 'ACTIVE' },
+        });
+        if (!enrollment && !lecture.isPreview) {
+            throw new Error('You must be enrolled to view this PDF');
+        }
+        if (!lecture.pdfPublicId) {
+            throw new Error('Lecture has no associated PDF');
+        }
+        const url = storageService.getSignedRawUrl(lecture.pdfPublicId, 300);
+        return { url, pageCount: lecture.pdfPageCount ?? null };
+    }
+
+    /**
      * Record a successful download
      */
     static async recordDownload(userId: string, lectureId: string) {

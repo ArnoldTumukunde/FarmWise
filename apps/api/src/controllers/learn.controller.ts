@@ -12,6 +12,16 @@ export const getDownloadUrl = async (req: AuthRequest, res: Response) => {
     }
 };
 
+export const getPdfUrl = async (req: AuthRequest, res: Response) => {
+    try {
+        const { lectureId } = req.params;
+        const result = await ProgressService.getPdfUrl(req.user!.id, lectureId);
+        res.json(result);
+    } catch (e: any) {
+        res.status(403).json({ error: e.message });
+    }
+};
+
 export const recordDownload = async (req: AuthRequest, res: Response) => {
     try {
         const { lectureId } = req.body;

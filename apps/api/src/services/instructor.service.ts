@@ -151,13 +151,15 @@ export class InstructorService {
     instructorId: string,
     data: {
       title?: string;
-      type?: 'VIDEO' | 'ARTICLE' | 'QUIZ';
+      type?: 'VIDEO' | 'ARTICLE' | 'QUIZ' | 'PDF';
       isPreview?: boolean;
       duration?: number;
       videoPublicId?: string;
       videoHash?: string;
       content?: string;
       quizData?: any;
+      pdfPublicId?: string | null;
+      pdfPageCount?: number | null;
     }
   ) {
     const lecture = await prisma.lecture.findUnique({
@@ -194,6 +196,8 @@ export class InstructorService {
     }
     if (data.content !== undefined) updateData.content = data.content;
     if (data.quizData !== undefined) updateData.quizData = data.quizData;
+    if (data.pdfPublicId !== undefined) updateData.pdfPublicId = data.pdfPublicId;
+    if (data.pdfPageCount !== undefined) updateData.pdfPageCount = data.pdfPageCount;
 
     const updated = await prisma.lecture.update({
       where: { id: lectureId },
@@ -392,7 +396,7 @@ export class InstructorService {
     });
   }
 
-  static async createLecture(instructorId: string, sectionId: string, title: string, type: 'VIDEO' | 'ARTICLE' | 'QUIZ') {
+  static async createLecture(instructorId: string, sectionId: string, title: string, type: 'VIDEO' | 'ARTICLE' | 'QUIZ' | 'PDF') {
     const section = await prisma.section.findUnique({ where: { id: sectionId }, include: { course: true, lectures: true } });
     if (!section || section.course.instructorId !== instructorId) throw new Error('Access denied');
 

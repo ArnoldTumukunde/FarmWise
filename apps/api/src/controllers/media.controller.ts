@@ -10,7 +10,7 @@ export const getUploadSignature = async (req: AuthRequest, res: Response) => {
     const folder = (req.query.folder as string) || req.body?.folder;
     if (!folder) return res.status(400).json({ error: 'Folder name is required' });
 
-    const resourceType = ((req.query.type as string) || req.body?.type || 'image') as 'image' | 'video';
+    const resourceType = ((req.query.type as string) || req.body?.type || 'image') as 'image' | 'video' | 'raw';
 
     // Avatar uploads are open to all authenticated users; course media needs instructor/admin
     const openFolders = ['avatars'];
