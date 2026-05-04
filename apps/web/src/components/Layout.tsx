@@ -541,7 +541,7 @@ function Navbar() {
                               Go to Cart
                             </Link>
                             <Link
-                              to="/checkout"
+                              to="/cart"
                               onClick={() => setCartDropdownOpen(false)}
                               className="block w-full text-center py-2.5 text-sm font-semibold bg-primary text-white rounded hover:bg-primary-light transition-colors"
                             >

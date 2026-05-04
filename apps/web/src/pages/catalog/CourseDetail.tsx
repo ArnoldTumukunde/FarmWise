@@ -254,6 +254,34 @@ export default function CourseDetail() {
       videoUrl: undefined as string | undefined,
     }));
 
+  const handleBuyNow = async () => {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+    if (!course) return;
+    setEnrolling(true);
+    try {
+      const res = await fetchApi('/payments/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ courseIds: [course.id] }),
+      });
+      if (res.redirectUrl) {
+        window.location.href = res.redirectUrl;
+        return;
+      }
+      if (res.enrolled || res.freeCheckout) {
+        toast.success('Enrolled successfully!');
+        navigate(`/learn/${res.courseSlugs?.[0] || course.slug}`);
+        return;
+      }
+      throw new Error('Unexpected response from checkout');
+    } catch (err: any) {
+      toast.error(err.message || 'Could not start checkout');
+      setEnrolling(false);
+    }
+  };
+
   const purchaseCardProps = {
     course,
     isFree,
@@ -262,6 +290,7 @@ export default function CourseDetail() {
     totalDuration,
     enrolling,
     onEnroll: handleEnroll,
+    onBuyNow: handleBuyNow,
     onPreviewOpen: () => setIsPreviewOpen(true),
     thumbnailCollapsed: false,
   };
@@ -504,6 +533,7 @@ interface PurchaseCardProps {
   totalDuration: number;
   enrolling: boolean;
   onEnroll: () => void;
+  onBuyNow: () => void;
   onPreviewOpen: () => void;
   thumbnailCollapsed: boolean;
 }
@@ -516,6 +546,7 @@ function PurchaseCard({
   totalDuration,
   enrolling,
   onEnroll,
+  onBuyNow,
   onPreviewOpen,
   thumbnailCollapsed,
 }: PurchaseCardProps) {
@@ -647,13 +678,14 @@ function PurchaseCard({
           )}
         </Button>
 
-        {/* Buy Now (paid, not in cart) */}
+        {/* Buy Now (paid, not in cart) — skip cart, go straight to Pesapal */}
         {!isFree && (
           <button
-            onClick={() => navigate(`/checkout?courseId=${course.id}`)}
-            className="w-full py-3 border-2 border-gray-300 text-text-base hover:border-primary rounded-lg font-semibold text-sm transition-colors"
+            disabled={enrolling}
+            onClick={onBuyNow}
+            className="w-full py-3 border-2 border-gray-300 text-text-base hover:border-primary rounded-lg font-semibold text-sm transition-colors disabled:opacity-50"
           >
-            Buy Now
+            {enrolling ? 'Redirecting…' : 'Buy Now'}
           </button>
         )}
 
