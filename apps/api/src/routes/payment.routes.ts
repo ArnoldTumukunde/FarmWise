@@ -17,7 +17,15 @@ router.post('/checkout', requireAuth, createCheckoutSession);
 // URL was registered. Both supported. No signature; we re-verify status by
 // calling GetTransactionStatus with our bearer token.
 router.get('/ipn', ipnGet);
-router.post('/ipn', express.json(), ipnPost);
+// Pesapal POSTs IPN as application/x-www-form-urlencoded; also accept JSON
+// in case they change the contract. Run both parsers in sequence — each
+// no-ops when the content-type doesn't match.
+router.post(
+  '/ipn',
+  express.urlencoded({ extended: false }),
+  express.json(),
+  ipnPost,
+);
 
 // Frontend polls this from /payments/return while the user waits for IPN to
 // land (Pesapal redirects browser before triggering IPN sometimes).
