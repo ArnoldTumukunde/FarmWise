@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { AdminService } from '../services/admin.service';
 import { CmsService } from '../services/cms.service';
+import { PayoutsService } from '../services/payouts.service';
 
 export const getDashboard = async (req: AuthRequest, res: Response) => {
     try {
@@ -213,7 +214,7 @@ export const getRefunds = async (req: AuthRequest, res: Response) => {
 
 export const approveRefund = async (req: AuthRequest, res: Response) => {
     try {
-        const enrollment = await AdminService.approveRefund(req.params.id);
+        const enrollment = await AdminService.approveRefund(req.params.id, req.user!.id);
         res.json({ enrollment });
     } catch (e: any) { res.status(400).json({ error: e.message }); }
 };
@@ -300,5 +301,84 @@ export const deleteCategory = async (req: AuthRequest, res: Response) => {
     try {
         await AdminService.deleteCategory(req.params.id);
         res.json({ message: 'Category deleted successfully' });
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+};
+
+// --- COURSE: per-course revenue split override ---
+
+export const setCourseInstructorShare = async (req: AuthRequest, res: Response) => {
+    try {
+        const raw = req.body?.percent;
+        const percent = raw === null || raw === '' || raw === undefined ? null : Number(raw);
+        const course = await AdminService.setCourseInstructorShare(req.params.id, percent, req.user!.id, req.ip);
+        res.json({ course });
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+};
+
+// --- PAYOUTS ---
+
+export const getPendingBalances = async (req: AuthRequest, res: Response) => {
+    try {
+        const balances = await PayoutsService.computePendingBalances();
+        res.json({ balances });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+};
+
+export const createPayoutBatch = async (req: AuthRequest, res: Response) => {
+    try {
+        const { instructorIds, minThreshold, notes } = req.body as {
+            instructorIds?: string[];
+            minThreshold?: number;
+            notes?: string;
+        };
+        const result = await PayoutsService.createPayoutBatch({ instructorIds, minThreshold, notes });
+        await CmsService.log(req.user!.id, 'payout.batch.create', 'InstructorPayout', undefined,
+            { count: result.batches.length, total: result.batches.reduce((s: number, b: { amount: number }) => s + b.amount, 0) }, req.ip);
+        res.json(result);
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+};
+
+export const listPayouts = async (req: AuthRequest, res: Response) => {
+    try {
+        const { instructorId, status } = req.query as { instructorId?: string; status?: string };
+        const payouts = await PayoutsService.listPayouts({ instructorId, status, limit: 200 });
+        res.json({ payouts });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+};
+
+export const downloadPayoutCsv = async (req: AuthRequest, res: Response) => {
+    try {
+        const ids = (req.query.ids as string || '').split(',').filter(Boolean);
+        if (ids.length === 0) return res.status(400).json({ error: 'ids query param required' });
+
+        const csv = await PayoutsService.toCsv(ids);
+
+        // Mark these as QUEUED — admin is about to upload to Openfloat.
+        for (const id of ids) {
+            await PayoutsService.markQueued(id);
+        }
+        await CmsService.log(req.user!.id, 'payout.csv.download', 'InstructorPayout', undefined, { ids }, req.ip);
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="payouts-${Date.now()}.csv"`);
+        res.send(csv);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+};
+
+export const markPayoutPaid = async (req: AuthRequest, res: Response) => {
+    try {
+        const { reference } = req.body as { reference?: string };
+        const payout = await PayoutsService.markPaid(req.params.id, reference);
+        await CmsService.log(req.user!.id, 'payout.mark_paid', 'InstructorPayout', req.params.id, { reference }, req.ip);
+        res.json({ payout });
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+};
+
+export const markPayoutFailed = async (req: AuthRequest, res: Response) => {
+    try {
+        const { notes } = req.body as { notes?: string };
+        const payout = await PayoutsService.markFailed(req.params.id, notes);
+        await CmsService.log(req.user!.id, 'payout.mark_failed', 'InstructorPayout', req.params.id, { notes }, req.ip);
+        res.json({ payout });
     } catch (e: any) { res.status(400).json({ error: e.message }); }
 };

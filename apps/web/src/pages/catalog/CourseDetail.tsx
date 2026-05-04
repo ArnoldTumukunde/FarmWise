@@ -174,11 +174,12 @@ export default function CourseDetail() {
       try {
         const res = await fetchApi("/payments/checkout", {
           method: "POST",
-          body: JSON.stringify({ courseId: course.id }),
+          body: JSON.stringify({ courseIds: [course.id] }),
         });
-        if (res.enrolled) {
+        if (res.enrolled || res.freeCheckout) {
           toast.success("Enrolled successfully!");
-          navigate(`/learn/${res.courseSlug || course.slug}`);
+          const slug = res.courseSlugs?.[0] || course.slug;
+          navigate(`/learn/${slug}`);
         }
       } catch (err: any) {
         toast.error(err.message || "Could not enroll");

@@ -19,9 +19,11 @@ export class CmsService {
                 supportEmail: map['general.supportEmail'] ?? 'support@aan.academy',
             },
             payments: {
-                platformFeePercent: map['payments.platformFeePercent'] ?? 30,
+                // Default cut for instructors. Per-course override lives on Course.instructorSharePercent.
+                // Always snapshot onto Enrollment.instructorSharePercent at purchase time so admin
+                // changes here never shift recorded earnings retroactively.
+                defaultInstructorSharePercent: map['payments.defaultInstructorSharePercent'] ?? 70,
                 minPayoutThreshold: map['payments.minPayoutThreshold'] ?? 50000,
-                autoPayoutEnabled: map['payments.autoPayoutEnabled'] ?? false,
             },
             content: {
                 minLecturesPerCourse: map['content.minLecturesPerCourse'] ?? 5,

@@ -137,12 +137,12 @@ export class NotificationService {
               body: `A payout of UGX ${amount} has been processed to your account.`,
               smsOptions: userPhone ? {
                  to: userPhone,
-                 message: `AAN Academy: A payout of UGX ${amount} has been submitted to your Stripe account. Allow a few days for processing.`
+                 message: `AAN Academy: A payout of UGX ${amount} is on the way to your registered mobile money account. Allow a few days for settlement.`
               } : undefined,
               emailOptions: userEmail ? {
                  to: userEmail,
                  subject: 'Payout Processed',
-                 html: `<p>A payout of <strong>UGX ${amount}</strong> has been successfully processed to your connected Stripe account.</p>`
+                 html: `<p>A payout of <strong>UGX ${amount}</strong> has been processed to your registered mobile-money or bank account on file. Update your payout details from your instructor dashboard if needed.</p>`
               } : undefined
          });
     }

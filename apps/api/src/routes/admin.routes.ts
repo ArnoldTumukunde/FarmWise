@@ -13,7 +13,9 @@ import {
     getRevenue,
     getBroadcasts, sendBroadcast,
     getSettings, updateSettings,
-    getCategories, createCategory, updateCategory, deleteCategory
+    getCategories, createCategory, updateCategory, deleteCategory,
+    getPendingBalances, createPayoutBatch, listPayouts, downloadPayoutCsv,
+    markPayoutPaid, markPayoutFailed, setCourseInstructorShare
 } from '../controllers/admin.controller';
 import {
     getHomepageSections, updateHomepageSection, reorderHomepageSections,
@@ -45,6 +47,7 @@ router.post('/courses/:id/sponsored', setSponsored);
 router.post('/courses/:id/unpublish', unpublishCourse);
 router.post('/courses/:id/publish', publishCourse);
 router.delete('/courses/:id', deleteCourse);
+router.post('/courses/:id/instructor-share', setCourseInstructorShare);
 
 // Reviews
 router.get('/reviews/flagged', getFlaggedReviews);
@@ -97,5 +100,13 @@ router.delete('/pages/:id', deletePage);
 
 // CMS: Audit log
 router.get('/audit-logs', getAuditLogs);
+
+// Payouts (instructor settlement via Openfloat)
+router.get('/payouts/balances', getPendingBalances);
+router.post('/payouts/batch', createPayoutBatch);
+router.get('/payouts', listPayouts);
+router.get('/payouts/csv', downloadPayoutCsv);
+router.post('/payouts/:id/paid', markPayoutPaid);
+router.post('/payouts/:id/failed', markPayoutFailed);
 
 export default router;

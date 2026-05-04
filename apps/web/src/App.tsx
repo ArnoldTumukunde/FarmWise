@@ -131,6 +131,8 @@ export default function App() {
             </ProtectedRoute>
           </Layout>
         } />
+        <Route path="/payments/return" element={<Layout><CheckoutSuccess /></Layout>} />
+        {/* Legacy alias for any old links */}
         <Route path="/checkout/success" element={<Layout><CheckoutSuccess /></Layout>} />
         <Route path="/checkout/cancel" element={<Layout><CheckoutCancel /></Layout>} />
 

@@ -79,14 +79,51 @@ export function CourseReview() {
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
   const [feedback, setFeedback] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [shareInput, setShareInput] = useState<string>('');
+  const [shareSaving, setShareSaving] = useState(false);
+  const [defaultShare, setDefaultShare] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) return;
     fetchApi(`/admin/courses/review?courseId=${id}`)
-      .then((data) => setCourse(data.course || data))
+      .then((data) => {
+        const c = data.course || data;
+        setCourse(c);
+        setShareInput(c?.instructorSharePercent != null ? String(c.instructorSharePercent) : '');
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
+
+    fetchApi('/admin/settings')
+      .then((s) => setDefaultShare(s?.payments?.defaultInstructorSharePercent ?? 70))
+      .catch(() => setDefaultShare(70));
   }, [id]);
+
+  const handleSaveShare = async () => {
+    setShareSaving(true);
+    try {
+      const trimmed = shareInput.trim();
+      const percent = trimmed === '' ? null : Number(trimmed);
+      if (percent !== null && (!Number.isFinite(percent) || percent < 0 || percent > 100)) {
+        toast.error('Share must be blank or 0–100');
+        return;
+      }
+      const res = await fetchApi(`/admin/courses/${id}/instructor-share`, {
+        method: 'POST',
+        body: JSON.stringify({ percent }),
+      });
+      setCourse((c: any) => ({ ...c, instructorSharePercent: res.course.instructorSharePercent }));
+      toast.success(
+        percent === null
+          ? 'Cleared override — course will use platform default'
+          : `Set instructor share to ${percent}%`,
+      );
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to update share');
+    } finally {
+      setShareSaving(false);
+    }
+  };
 
   const toggleCheck = (key: string) => {
     setChecklist((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -302,6 +339,42 @@ export function CourseReview() {
               <SkeletonPanel />
             ) : (
               <>
+                {/* Revenue share override — admin-only. Course-level override
+                    snapshots onto each Enrollment at purchase time. */}
+                <div className="border border-[#2E7D32]/15 rounded-lg p-4 bg-[#FAFAF5]">
+                  <h3 className="text-sm font-semibold text-[#1B2B1B] mb-1">Revenue Split</h3>
+                  <p className="text-xs text-[#5A6E5A] mb-3 leading-relaxed">
+                    Instructor share for this course. Leave blank to use the platform default
+                    {defaultShare != null ? ` (${defaultShare}%)` : ''}. Set to 100 for partner
+                    courses where the instructor keeps everything.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={shareInput}
+                      onChange={(e) => setShareInput(e.target.value)}
+                      placeholder={`Default${defaultShare != null ? ` (${defaultShare})` : ''}`}
+                      min="0"
+                      max="100"
+                      className="w-24 px-2.5 py-2 text-sm rounded-lg border border-[#2E7D32]/20 bg-white text-[#1B2B1B] focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-transparent transition-colors"
+                    />
+                    <span className="text-xs text-[#5A6E5A]">%</span>
+                    <button
+                      onClick={handleSaveShare}
+                      disabled={shareSaving}
+                      className="ml-auto inline-flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-lg bg-[#2E7D32] text-white hover:bg-[#2E7D32]/90 disabled:opacity-50 transition-colors"
+                    >
+                      {shareSaving ? <Loader2 size={12} className="animate-spin" /> : null}
+                      Save
+                    </button>
+                  </div>
+                  {course?.instructorSharePercent != null && (
+                    <p className="text-xs text-[#2E7D32] mt-2">
+                      Override active: instructor keeps {course.instructorSharePercent}%
+                    </p>
+                  )}
+                </div>
+
                 <div>
                   <h3 className="text-lg font-semibold text-[#1B2B1B] mb-4">Quality Checklist</h3>
                   <div className="space-y-3">

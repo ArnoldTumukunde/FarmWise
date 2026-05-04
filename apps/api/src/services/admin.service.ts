@@ -1,6 +1,6 @@
 import { prisma } from '@farmwise/db';
-import { stripe } from './stripe.service';
 import { NotificationService } from './notification.service';
+import { PesapalService } from './pesapal.service';
 
 export class AdminService {
     // --- DASHBOARD KPIs ---
@@ -431,17 +431,35 @@ export class AdminService {
         return { refunds, total, page, totalPages: Math.ceil(total / limit) };
     }
 
-    static async approveRefund(enrollmentId: string) {
+    static async approveRefund(enrollmentId: string, adminId: string) {
         const enrollment = await prisma.enrollment.findUnique({
             where: { id: enrollmentId },
-            include: { course: { select: { title: true } }, user: { select: { id: true, phone: true, email: true } } }
+            include: {
+                course: { select: { title: true } },
+                user: { select: { id: true, phone: true, email: true } },
+                payment: { select: { id: true, confirmationCode: true, amount: true, paymentMethod: true } },
+            }
         });
         if (!enrollment) throw new Error('Enrollment not found');
         if (enrollment.status === 'REFUNDED') throw new Error('Already refunded');
 
-        // Issue Stripe refund if there was a payment
-        if (enrollment.paymentIntentId) {
-            await stripe.refunds.create({ payment_intent: enrollment.paymentIntentId });
+        // Issue Pesapal refund if there was a payment with a confirmation code.
+        // Mobile money refunds are full-only (Pesapal limitation) — caller must
+        // ensure refund amount equals the full payment amount for those.
+        if (enrollment.payment?.confirmationCode) {
+            const result = await PesapalService.refund({
+                confirmationCode: enrollment.payment.confirmationCode,
+                amount: Number(enrollment.paidAmount),
+                username: `admin:${adminId}`,
+                remarks: 'Admin-approved refund',
+            });
+            if (!result.accepted) {
+                throw new Error(`Pesapal refund rejected: ${result.message}`);
+            }
+            await prisma.payment.update({
+                where: { id: enrollment.payment.id },
+                data: { status: 'REFUND_REQUESTED', refundedAt: new Date(), refundAmount: Number(enrollment.paidAmount) },
+            });
         }
 
         const updated = await prisma.enrollment.update({
@@ -652,8 +670,46 @@ export class AdminService {
 
     static async updateSettings(section: string, data: Record<string, any>) {
         const { CmsService } = await import('./cms.service');
+
+        // Validation for revenue-split changes — never accept a value outside 0–100
+        // and refuse silent truncation.
+        if (section === 'payments' && 'defaultInstructorSharePercent' in data) {
+            const v = Number(data.defaultInstructorSharePercent);
+            if (!Number.isFinite(v) || v < 0 || v > 100) {
+                throw new Error('defaultInstructorSharePercent must be between 0 and 100');
+            }
+            data.defaultInstructorSharePercent = Math.round(v);
+        }
+
         await CmsService.updateSettings(section, data);
         return CmsService.getSettings();
+    }
+
+    /**
+     * Set or clear a per-course instructor-share override. null clears the
+     * override (course inherits the platform default at next purchase).
+     */
+    static async setCourseInstructorShare(courseId: string, percent: number | null, adminId: string, ip?: string) {
+        if (percent !== null && (!Number.isFinite(percent) || percent < 0 || percent > 100)) {
+            throw new Error('percent must be null or 0..100');
+        }
+        const before = await prisma.course.findUnique({
+            where: { id: courseId },
+            select: { id: true, title: true, instructorSharePercent: true },
+        });
+        if (!before) throw new Error('Course not found');
+
+        const after = await prisma.course.update({
+            where: { id: courseId },
+            data: { instructorSharePercent: percent === null ? null : Math.round(percent) },
+            select: { id: true, title: true, instructorSharePercent: true },
+        });
+
+        const { CmsService } = await import('./cms.service');
+        await CmsService.log(adminId, 'course.instructor_share.update', 'Course', courseId,
+            { before: before.instructorSharePercent, after: after.instructorSharePercent }, ip);
+
+        return after;
     }
 
     // --- CATEGORIES ---

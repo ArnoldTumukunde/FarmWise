@@ -1,14 +1,29 @@
 import express, { Router } from 'express';
-import { requireAuth } from '../middleware/auth.middleware';
-import { createCheckoutSession, handleStripeWebhook } from '../controllers/payment.controller';
+import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
+import {
+  createCheckoutSession,
+  ipnGet,
+  ipnPost,
+  getPaymentStatus,
+  adminRefund,
+} from '../controllers/payment.controller';
 
 const router = Router();
 
-// Used by frontend to trigger a purchase or fast-track a free enrollment
+// Initiate Pesapal checkout (single course or cart). Returns { redirectUrl }.
 router.post('/checkout', requireAuth, createCheckoutSession);
 
-// Stripe webhook hit from Stripe's servers
-// Extremely important: This needs raw body parsing
-router.post('/webhook', express.raw({ type: 'application/json' }), handleStripeWebhook);
+// Pesapal IPN — public. Pesapal calls with GET or POST depending on how the IPN
+// URL was registered. Both supported. No signature; we re-verify status by
+// calling GetTransactionStatus with our bearer token.
+router.get('/ipn', ipnGet);
+router.post('/ipn', express.json(), ipnPost);
+
+// Frontend polls this from /payments/return while the user waits for IPN to
+// land (Pesapal redirects browser before triggering IPN sometimes).
+router.get('/status/:orderTrackingId', requireAuth, getPaymentStatus);
+
+// Admin-only manual refund.
+router.post('/:id/refund', requireAuth, requireAdmin, adminRefund);
 
 export default router;

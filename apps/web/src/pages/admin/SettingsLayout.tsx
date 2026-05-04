@@ -71,9 +71,8 @@ export function SettingsLayout() {
   });
 
   const [payments, setPayments] = useState({
-    platformFeePercent: 30,
+    defaultInstructorSharePercent: 70,
     minPayoutThreshold: 50000,
-    autoPayoutEnabled: false,
   });
 
   const [content, setContent] = useState({
@@ -217,20 +216,34 @@ export function SettingsLayout() {
               {/* Payments */}
               {activeTab === 'payments' && (
                 <div className="bg-white rounded-xl border border-[#2E7D32]/10 p-6 space-y-5">
-                  <h2 className="text-lg font-semibold text-[#1B2B1B]">Payment Settings</h2>
+                  <h2 className="text-lg font-semibold text-[#1B2B1B]">Revenue Split</h2>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#1B2B1B] mb-1.5">Platform Fee (%)</label>
+                    <label className="block text-sm font-medium text-[#1B2B1B] mb-1.5">
+                      Default Instructor Share (%)
+                    </label>
                     <input
                       type="number"
-                      value={payments.platformFeePercent}
-                      onChange={(e) => setPayments((p) => ({ ...p, platformFeePercent: Number(e.target.value) }))}
+                      value={payments.defaultInstructorSharePercent}
+                      onChange={(e) => setPayments((p) => ({ ...p, defaultInstructorSharePercent: Number(e.target.value) }))}
                       min="0"
                       max="100"
                       className="w-full px-3 py-2.5 text-sm rounded-lg border border-[#2E7D32]/20 bg-white text-[#1B2B1B] focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-transparent transition-colors"
                     />
                     <p className="text-xs text-[#5A6E5A] mt-1">
-                      Percentage of each sale kept by the platform. Instructors receive the remainder.
+                      Percentage of each sale kept by the instructor. The platform keeps the remainder
+                      ({Math.max(0, Math.min(100, 100 - payments.defaultInstructorSharePercent))}%).
+                      Changes apply to <strong>future</strong> sales only — past earnings keep the share
+                      that was in effect when the customer paid.
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg bg-[#FAFAF5] border border-[#2E7D32]/10 p-4">
+                    <p className="text-xs text-[#5A6E5A] leading-relaxed">
+                      <strong className="text-[#1B2B1B]">Per-course override:</strong> for partner
+                      courses (e.g. universities), set the instructor share to <strong>100%</strong>
+                      directly on the course's edit page. Set it to <strong>blank</strong> to use the
+                      default above.
                     </p>
                   </div>
 
@@ -244,19 +257,8 @@ export function SettingsLayout() {
                       className="w-full px-3 py-2.5 text-sm rounded-lg border border-[#2E7D32]/20 bg-white text-[#1B2B1B] focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-transparent transition-colors"
                     />
                     <p className="text-xs text-[#5A6E5A] mt-1">
-                      Minimum balance before an instructor can request a payout.
+                      Minimum pending balance before an instructor is included in the next payout batch.
                     </p>
-                  </div>
-
-                  <div className="flex items-center justify-between py-2">
-                    <div>
-                      <p className="text-sm font-medium text-[#1B2B1B]">Auto-payout</p>
-                      <p className="text-xs text-[#5A6E5A]">Automatically pay instructors when threshold is met</p>
-                    </div>
-                    <Toggle
-                      checked={payments.autoPayoutEnabled}
-                      onChange={() => setPayments((p) => ({ ...p, autoPayoutEnabled: !p.autoPayoutEnabled }))}
-                    />
                   </div>
 
                   <button

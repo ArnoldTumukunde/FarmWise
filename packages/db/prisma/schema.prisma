@@ -39,6 +39,8 @@ model User {
   wishlist       Wishlist[]
   announcements  Announcement[]
   auditLogs      AuditLog[]
+  payments       Payment[]
+  payouts        InstructorPayout[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
@@ -64,8 +66,9 @@ model Profile {
   farmSize              String?
   yearsExperience       Int?
   website               String?
-  stripeConnectAccountId String? // Set when instructor completes Stripe Connect Express onboarding
-  stripeConnectStatus   String? // 'pending' | 'active' — from Stripe account.capabilities
+  payoutPhone           String?  // Mobile money number for instructor payouts (E.164)
+  payoutBankName        String?  // Optional bank for high-volume instructors
+  payoutBankAccount     String?
 }
 
 // ─── COURSES ───────────────────────────────────────────────────────────────
@@ -90,6 +93,11 @@ model Course {
   isFeatured           Boolean      @default(false) // Set by admin; drives [FEATURED] badge in course card
   sponsoredUntil       DateTime?    // If set and > now(), course shows as "Sponsored" in carousels
   moderationFeedback   String?      @db.Text // Admin's rejection reason shown to instructor
+  // Per-course revenue split override (admin-only). null = use platform default
+  // (PlatformConfig key "payment.defaultInstructorSharePercent"). 100 = full payout to
+  // instructor (e.g. partner universities). 0 = platform-only. Snapshotted onto
+  // Enrollment.instructorSharePercent at purchase time so changes never affect past sales.
+  instructorSharePercent Int?
   // Denormalized counters — update atomically in the service layer on each relevant event:
   averageRating        Decimal      @default(0) @db.Decimal(3, 2)
   reviewCount          Int          @default(0)
@@ -294,13 +302,17 @@ model Enrollment {
   user             User             @relation(fields: [userId], references: [id])
   courseId         String
   course           Course           @relation(fields: [courseId], references: [id])
-  paidAmount       Decimal          @default(0)
-  stripeSessionId  String?          // Stripe Checkout Session ID (paid courses only)
-  paymentIntentId  String?          // Stripe PaymentIntent ID (from checkout.session.completed)
+  paidAmount       Decimal          @default(0) @db.Decimal(14, 2)
+  currency         String           @default("UGX")
+  // Snapshot of effective instructor share at purchase time. NEVER recompute from
+  // Course.instructorSharePercent at payout — admins changing the split must not
+  // retroactively shift recorded earnings.
+  instructorSharePercent Int        @default(70)
+  paymentId        String?
+  payment          Payment?         @relation(fields: [paymentId], references: [id])
+  payoutId         String?          // null = unpaid; set when included in an InstructorPayout
+  payout           InstructorPayout? @relation(fields: [payoutId], references: [id])
   status           EnrollmentStatus @default(PENDING)
-  // PENDING: created when Checkout Session is started — farmer can't access course yet
-  // ACTIVE:  set by webhook after payment confirmed, or immediately for free courses
-  // REFUNDED: set after refund processed
   refundedAt       DateTime?
   createdAt        DateTime         @default(now())
   progress         LectureProgress[]
@@ -309,8 +321,8 @@ model Enrollment {
   @@unique([userId, courseId])
   @@index([userId])
   @@index([courseId])
-  @@index([stripeSessionId])   // Webhook: O(1) lookup by session ID
-  @@index([paymentIntentId])   // Webhook: O(1) lookup for late-clearing payment methods
+  @@index([paymentId])
+  @@index([payoutId])
 }
 
 enum EnrollmentStatus {
@@ -319,9 +331,88 @@ enum EnrollmentStatus {
   REFUNDED
 }
 
-model ProcessedStripeEvent {
-  id          String   @id
-  processedAt DateTime @default(now())
+// ─── PAYMENTS (Pesapal API 3.0) ────────────────────────────────────────────
+
+model Payment {
+  id                 String        @id @default(cuid())
+  userId             String
+  user               User          @relation(fields: [userId], references: [id])
+
+  // Identifiers
+  merchantReference  String        @unique // we generate; sent to Pesapal as `id`
+  orderTrackingId    String?       @unique // Pesapal returns from SubmitOrderRequest
+  confirmationCode   String?       @unique // from GetTransactionStatus, required for refund
+
+  // Money
+  amount             Decimal       @db.Decimal(14, 2)
+  currency           String        // KES | UGX | TZS | USD
+
+  // Status
+  status             PaymentStatus @default(PENDING)
+  pesapalStatusCode  Int?          // 0=INVALID, 1=COMPLETED, 2=FAILED, 3=REVERSED
+  paymentMethod      String?       // "Visa" | "MpesaKE" | "MTNUganda" ...
+  paymentAccount     String?       // masked
+  failureDescription String?       @db.Text
+
+  // Refund
+  refundedAt         DateTime?
+  refundAmount       Decimal?      @db.Decimal(14, 2)
+  refundRemarks      String?
+
+  enrollments        Enrollment[]
+  metadata           Json?         // { courseIds[], couponCode? }
+
+  createdAt          DateTime      @default(now())
+  paidAt             DateTime?
+  updatedAt          DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum PaymentStatus {
+  PENDING            // SubmitOrder done, awaiting customer payment
+  COMPLETED
+  FAILED
+  REVERSED           // chargeback / dispute won by customer
+  REFUND_REQUESTED
+  REFUNDED
+  CANCELLED
+}
+
+model ProcessedPesapalIpn {
+  orderTrackingId  String   @id
+  notificationType String   // IPNCHANGE | RECURRING
+  receivedAt       DateTime @default(now())
+}
+
+// ─── INSTRUCTOR PAYOUTS ─────────────────────────────────────────────────────
+
+model InstructorPayout {
+  id            String       @id @default(cuid())
+  instructorId  String
+  instructor    User         @relation(fields: [instructorId], references: [id])
+  amount        Decimal      @db.Decimal(14, 2)
+  currency      String
+  periodStart   DateTime
+  periodEnd     DateTime
+  status        PayoutStatus @default(PENDING)
+  reference     String?      // Openfloat batch / transaction ID after manual upload
+  notes         String?      @db.Text
+  createdAt     DateTime     @default(now())
+  paidAt        DateTime?
+  enrollments   Enrollment[]
+
+  @@index([instructorId, status])
+  @@index([createdAt])
+}
+
+enum PayoutStatus {
+  PENDING    // computed, not yet sent to Openfloat
+  QUEUED     // CSV downloaded / uploaded to Openfloat
+  PAID       // admin marked paid after confirmation
+  FAILED     // admin marked failed (will roll enrollments back to unpaid)
 }
 
 model Coupon {

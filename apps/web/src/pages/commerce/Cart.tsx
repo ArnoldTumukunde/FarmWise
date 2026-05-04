@@ -58,20 +58,25 @@ export default function Cart() {
     if (cart.items.length === 0) return;
     setCheckoutLoading(true);
     try {
-      const firstItem = cart.items[0];
+      const courseIds = cart.items.map((i) => i.courseId);
       const res = await fetchApi('/payments/checkout', {
         method: 'POST',
         body: JSON.stringify({
-          courseId: firstItem.courseId,
+          courseIds,
           ...(discount ? { couponCode: discount.code } : {}),
         }),
       });
-      if (res.enrolled) {
+      if (res.enrolled || res.freeCheckout) {
         toast.success('Enrolled successfully!');
-        cart.removeItem(firstItem.id);
-        navigate(`/learn/${res.courseSlug || firstItem.course.slug}`);
-      } else if (res.url) {
-        window.location.href = res.url;
+        cart.items.forEach((i) => cart.removeItem(i.id));
+        const firstSlug = res.courseSlugs?.[0] || cart.items[0]?.course.slug;
+        navigate(firstSlug ? `/learn/${firstSlug}` : '/farmer/learning');
+      } else if (res.redirectUrl) {
+        // Pesapal hands us a redirect URL — the user completes payment there
+        // and lands back on /payments/return.
+        window.location.href = res.redirectUrl;
+      } else {
+        throw new Error('Unexpected response from checkout');
       }
     } catch (err: any) {
       toast.error(err.message || 'Checkout failed. Please try again.');
@@ -247,7 +252,9 @@ export default function Cart() {
               </div>
             </details>
 
-            <p className="text-xs text-center text-text-muted mt-4">Secure payment via Stripe</p>
+            <p className="text-xs text-center text-text-muted mt-4">
+              Secure payment via Pesapal — M-Pesa, MTN Mobile Money, Airtel Money, Visa &amp; Mastercard
+            </p>
           </div>
         </div>
       </div>
