@@ -108,7 +108,7 @@ const TYPE_STYLES: Record<string, { bg: string; text: string; icon: typeof PlayC
   PDF: { bg: 'bg-rose-100', text: 'text-rose-700', icon: FileType2 },
 };
 
-type LectureKind = LectureKind | 'PDF';
+type LectureKind = 'VIDEO' | 'ARTICLE' | 'QUIZ' | 'PDF';
 
 const CLOUD_NAME = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
 
